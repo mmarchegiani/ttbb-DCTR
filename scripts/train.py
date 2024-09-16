@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     os.makedirs(args.output, exist_ok=True)
     datasets = get_datasets_list(cfg)
-    dataset_training = Dataset(datasets, "test.h5", cfg["preprocessing"], shuffle=False, reweigh=True, has_data=True)
+    dataset_training = Dataset(datasets, "test.h5", cfg["preprocessing"], frac_train=1.0, shuffle=False, reweigh=True, has_data=True)
     print(dataset_training)
     events = get_events(dataset_training, shuffle=cfg["preprocessing"]["shuffle"], seed=cfg["preprocessing"]["seed"])
     mask_cr = get_cr_mask(events, cfg["cuts"]["cr1"])
@@ -138,9 +138,9 @@ if __name__ == "__main__":
     X, Y, W = get_tensors(input_features, events.dctr, events.event.weight * w_nj, device=device)
 
     # Since the shuffling is already performed by permutation of the events, we don't shuffle the tensors here in order to maintain the same order in events and X_train, X_test
-    X_train, X_test = train_test_split(X, test_size=0.2, shuffle=False)
-    Y_train, Y_test = train_test_split(Y, test_size=0.2, shuffle=False)
-    W_train, W_test = train_test_split(W, test_size=0.2, shuffle=False)
+    X_train, X_test = train_test_split(X, test_size=cfg["preprocessing"]["test_size"], shuffle=False)
+    Y_train, Y_test = train_test_split(Y, test_size=cfg["preprocessing"]["test_size"], shuffle=False)
+    W_train, W_test = train_test_split(W, test_size=cfg["preprocessing"]["test_size"], shuffle=False)
 
     train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=4096)
     val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=4096)
