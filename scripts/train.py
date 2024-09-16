@@ -6,6 +6,8 @@ import awkward as ak
 from omegaconf import OmegaConf
 
 import torch
+from pytorch_lightning.trainer import Trainer
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from sklearn.model_selection import train_test_split
 
 from tthbb_spanet.lib.dataset.h5 import Dataset
@@ -118,13 +120,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     cfg = OmegaConf.load(args.cfg)
+    cfg_cuts = cfg["cuts"]
+    cfg_preprocessing = cfg["preprocessing"]
+    cfg_model = cfg["model"]
+    cfg_training = cfg["training"]
 
     os.makedirs(args.output, exist_ok=True)
     datasets = get_datasets_list(cfg)
-    dataset_training = Dataset(datasets, "test.h5", cfg["preprocessing"], frac_train=1.0, shuffle=False, reweigh=True, has_data=True)
-    print(dataset_training)
-    events = get_events(dataset_training, shuffle=cfg["preprocessing"]["shuffle"], seed=cfg["preprocessing"]["seed"])
-    mask_cr = get_cr_mask(events, cfg["cuts"]["cr1"])
+    dataset_training = Dataset(datasets, "test.h5", cfg_preprocessing, frac_train=1.0, shuffle=False, reweigh=True, has_data=True)
+    events = get_events(dataset_training, shuffle=cfg_preprocessing["shuffle"], seed=cfg_preprocessing["seed"])
+    mask_cr = get_cr_mask(events, cfg_cuts["cr1"])
 
     # Select events in control region
     events = events[mask_cr]
@@ -143,18 +148,23 @@ if __name__ == "__main__":
     X, Y, W = get_tensors(input_features, events.dctr, events.event.weight * w_nj, device=device)
 
     # Since the shuffling is already performed by permutation of the events, we don't shuffle the tensors here in order to maintain the same order in events and X_train, X_test
-    X_train, X_test = train_test_split(X, test_size=cfg["preprocessing"]["test_size"], shuffle=False)
-    Y_train, Y_test = train_test_split(Y, test_size=cfg["preprocessing"]["test_size"], shuffle=False)
-    W_train, W_test = train_test_split(W, test_size=cfg["preprocessing"]["test_size"], shuffle=False)
+    X_train, X_test = train_test_split(X, test_size=cfg_preprocessing["test_size"], shuffle=False)
+    Y_train, Y_test = train_test_split(Y, test_size=cfg_preprocessing["test_size"], shuffle=False)
+    W_train, W_test = train_test_split(W, test_size=cfg_preprocessing["test_size"], shuffle=False)
 
     train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=4096)
     val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=4096)
 
     # Instantiate the model
     input_size = len(input_features)
-    model = BinaryClassifier(input_size, **cfg["model"])
+    model = BinaryClassifier(input_size, **cfg_model, learning_rate=cfg_training["learning_rate"])
 
     # Move the model to device and set training mode
     model = model.to(device)
     print("Initialized model:")
     print(model)
+
+    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=0.00, patience=cfg_training["patience"], verbose=False, mode="min")
+    trainer = Trainer(max_epochs=cfg_training["epochs"], default_root_dir=args.output, callbacks=[early_stop_callback])
+    print("Training model...")
+    trainer.fit(model, train_dataloader, val_dataloader)
