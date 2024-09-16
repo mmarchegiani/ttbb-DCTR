@@ -1,10 +1,11 @@
-import pytorch_lightning as pl
+import torch
 import torch.nn as nn
+import pytorch_lightning as pl
 
 class BinaryClassifier(pl.LightningModule):
     def __init__(self, input_size, hidden_size, output_size, num_hidden_layers, learning_rate=1e-3):
         super(BinaryClassifier, self).__init__()
-        self.save_hyperparameters() # Save hyperparameters in self.hparams
+        self.save_hyperparameters()
         self.learning_rate = learning_rate
         self.criterion = nn.BCEWithLogitsLoss(reduction='none') # Note: with the BCEWithLogitsLoss, a sigmoid is applied to the output of the model
 
@@ -36,16 +37,21 @@ class BinaryClassifier(pl.LightningModule):
         self.log('train_loss', loss)
         return loss
 
+    def validation_step(self, batch, batch_idx):
+        x, y, w = batch
+        y_pred = self(x)
+        losses = self.criterion(y_pred.squeeze(), y.float())
+        loss = (losses * w).mean()
+        self.log('val_loss', loss)
+        return loss
+
     def test_step(self, batch, batch_idx):
         x, y, w = batch
         y_pred = self(x)
         losses = self.criterion(y_pred.squeeze(), y.float())
         loss = (losses * w).mean()
-        #acc = self.accuracy(y_hat, y)
         self.log('test_loss', loss, prog_bar=True)
-        #self.log('test_acc', acc, prog_bar=True)
-        #return {'loss': loss, 'acc': acc}
-        return {'loss': loss}
+        return loss
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         x, y, w = batch
