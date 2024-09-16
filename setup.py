@@ -19,7 +19,8 @@ setup(
         'vector==1.4.1',
         'omegaconf',
         'scikit-learn',
-        'htcondor'
+        'htcondor',
+        'pytorch_lightning'
     ],
     classifiers=[
         'Development Status :: 1 - Planning',

@@ -5,8 +5,13 @@ import awkward as ak
 
 from omegaconf import OmegaConf
 
+import torch
+from sklearn.model_selection import train_test_split
+
 from tthbb_spanet.lib.dataset.h5 import Dataset
 from ttbb_dctr.lib.quantile_transformer import WeightedQuantileTransformer
+from ttbb_dctr.lib.data_preprocessing import _stack_arrays, get_tensors, get_dataloader
+from ttbb_dctr.models.binary_classifier import BinaryClassifier
 
 def get_datasets_list(cfg):
     folders = cfg["input"]["folders"]
@@ -45,13 +50,13 @@ def get_njet_reweighting(events, mask_num, mask_den):
     reweighting_map_njet = {}
     njet = ak.num(events.JetGood)
     w = events.event.weight
-    w_nj = np.ones(len(events_den))
+    w_nj = np.ones(len(events))
     for nj in range(4,7):
         mask_nj = (njet == nj)
         reweighting_map_njet[nj] = sum(w[mask_num & mask_nj]) / sum(w[mask_den & mask_nj])
-        w_nj = np.where(mask_nj & mask_ttbb, reweighting_map_njet[nj], w_nj)
+        w_nj = np.where(mask_den & mask_nj, reweighting_map_njet[nj], w_nj)
     reweighting_map_njet[7] = sum(w[mask_num & (njet >= 7)]) / sum(w[mask_den & (njet >= 7)])
-    w_nj = np.where((njet >= 7) & mask_ttbb, reweighting_map_njet[7], w_nj)
+    w_nj = np.where(mask_den & (njet >= 7), reweighting_map_njet[7], w_nj)
     return w_nj
 
 def get_input_features(events):
@@ -116,7 +121,7 @@ if __name__ == "__main__":
 
     os.makedirs(args.output, exist_ok=True)
     datasets = get_datasets_list(cfg)
-    dataset_training = Dataset(datasets, "test.h5", cfg["preprocessing"], shuffle=False, reweigh=True, has_data=True)
+    dataset_training = Dataset(datasets, "test.h5", cfg["preprocessing"], frac_train=1.0, shuffle=False, reweigh=True, has_data=True)
     print(dataset_training)
     events = get_events(dataset_training, shuffle=cfg["preprocessing"]["shuffle"], seed=cfg["preprocessing"]["seed"])
     mask_cr = get_cr_mask(events, cfg["cuts"]["cr1"])
@@ -138,9 +143,18 @@ if __name__ == "__main__":
     X, Y, W = get_tensors(input_features, events.dctr, events.event.weight * w_nj, device=device)
 
     # Since the shuffling is already performed by permutation of the events, we don't shuffle the tensors here in order to maintain the same order in events and X_train, X_test
-    X_train, X_test = train_test_split(X, test_size=0.2, shuffle=False)
-    Y_train, Y_test = train_test_split(Y, test_size=0.2, shuffle=False)
-    W_train, W_test = train_test_split(W, test_size=0.2, shuffle=False)
+    X_train, X_test = train_test_split(X, test_size=cfg["preprocessing"]["test_size"], shuffle=False)
+    Y_train, Y_test = train_test_split(Y, test_size=cfg["preprocessing"]["test_size"], shuffle=False)
+    W_train, W_test = train_test_split(W, test_size=cfg["preprocessing"]["test_size"], shuffle=False)
 
     train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=4096)
     val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=4096)
+
+    # Instantiate the model
+    input_size = len(input_features)
+    model = BinaryClassifier(input_size, **cfg["model"])
+
+    # Move the model to device and set training mode
+    model = model.to(device)
+    print("Initialized model:")
+    print(model)
