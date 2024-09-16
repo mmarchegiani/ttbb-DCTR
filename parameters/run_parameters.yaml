@@ -1,9 +1,9 @@
 input:
   folders:
     - /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/2016_PreVFP
-    #- /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/2016_PostVFP
-    #- /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/2017
-    #- /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/2018
+    - /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/2016_PostVFP
+    - /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/2017
+    - /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/2018
 
   exclude_samples:
     - ttHTobb_ttToSemiLep
@@ -56,4 +56,8 @@ model:
   hidden_size: 50
   output_size: 1
   num_hidden_layers: 1
+
+training:
+  epochs: 50
   learning_rate: 0.001
+  patience: 10
