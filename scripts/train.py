@@ -93,30 +93,11 @@ def get_input_features(events):
 
     return input_features
 
-def get_tensors(input_features, labels, weights, dtype=np.float32, device="cuda", normalize=True, normalize_weights=True):
-    if type(input_features) is dict:
-        input_features = list(input_features.values())
-    elif type(input_features) is list:
-        pass
-    else:
-        raise ValueError("input_features must be either a dictionary or a list")
-    X_train = _stack_arrays(input_features, dtype=dtype, normalize=normalize)
-    Y_train = torch.tensor(labels, dtype=torch.long)
-    W = torch.Tensor(weights)
-
-    # Move inputs, weights and labels to GPU, if available
-    if (device.type == "cuda") | (device == "cuda"):
-        X_train, Y_train, W = X_train.to(device), Y_train.to(device), W.to(device)
-
-    if normalize_weights:
-        W = W / W.mean()
-
-    return X_train, Y_train, W
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--cfg', type=str, help="Config file with parameters for training", required=True)
     parser.add_argument('-o', '--output', type=str, help="Output folder", required=True)
+    parser.add_argument('--test', action='store_true', help="Run in test mode")
     args = parser.parse_args()
 
     cfg = OmegaConf.load(args.cfg)
@@ -134,6 +115,10 @@ if __name__ == "__main__":
     # Select events in control region
     events = events[mask_cr]
 
+    # Run only over 10 batches for testing
+    if args.test:
+        events = events[:cfg_training["batch_size"]*10]
+
     # Define event classes
     mask_data = (events.data == 1)
     mask_data_minus_minor_bkg = (events.data == 1) | (events.ttcc == 1) | (events.ttlf == 1) | (events.tt2l2nu == 1) | (events.wjets == 1) | (events.singletop == 1) | (events.tthbb == 1)
@@ -145,15 +130,19 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
-    X, Y, W = get_tensors(input_features, events.dctr, events.event.weight * w_nj, device=device)
+    X, Y, W = get_tensors(input_features, events.dctr, events.event.weight * w_nj, device=device, normalize_inputs=True, normalize_weights=True)
 
     # Since the shuffling is already performed by permutation of the events, we don't shuffle the tensors here in order to maintain the same order in events and X_train, X_test
     X_train, X_test = train_test_split(X, test_size=cfg_preprocessing["test_size"], shuffle=False)
     Y_train, Y_test = train_test_split(Y, test_size=cfg_preprocessing["test_size"], shuffle=False)
     W_train, W_test = train_test_split(W, test_size=cfg_preprocessing["test_size"], shuffle=False)
 
-    train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=4096)
-    val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=4096)
+    if cfg_preprocessing["num_workers"]:
+        if cfg_preprocessing["num_workers"] > 0:
+            raise NotImplementedError("num_workers > 0: multiprocessing is not supported yet in the data preprocessing")
+
+    train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=cfg_training["batch_size"], num_workers=cfg_preprocessing["num_workers"], shuffle=False)
+    val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=cfg_training["batch_size"], num_workers=cfg_preprocessing["num_workers"], shuffle=False)
 
     # Instantiate the model
     input_size = len(input_features)

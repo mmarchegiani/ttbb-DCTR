@@ -46,6 +46,7 @@ preprocessing:
   test_size: 0.2
   shuffle: true
   seed: null
+  num_workers: 0
 
 cuts:
   cr1:
@@ -60,4 +61,5 @@ model:
 training:
   epochs: 50
   learning_rate: 0.001
+  batch_size: 4096
   patience: 10
