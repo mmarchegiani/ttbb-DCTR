@@ -7,108 +7,34 @@ from omegaconf import OmegaConf
 
 import torch
 from pytorch_lightning.trainer import Trainer
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from sklearn.model_selection import train_test_split
 
 from tthbb_spanet.lib.dataset.h5 import Dataset
-from ttbb_dctr.lib.quantile_transformer import WeightedQuantileTransformer
-from ttbb_dctr.lib.data_preprocessing import _stack_arrays, get_tensors, get_dataloader
+from ttbb_dctr.lib.data_preprocessing import _stack_arrays, get_tensors, get_dataloader, get_datasets_list, get_events, get_cr_mask, get_njet_reweighting, get_input_features
 from ttbb_dctr.models.binary_classifier import BinaryClassifier
-
-def get_datasets_list(cfg):
-    folders = cfg["input"]["folders"]
-    datasets = []
-    for folder in folders:
-        print(f"Processing folder {folder}")
-        exclude_samples = ["ttHTobb_ttToSemiLep", "TTbbSemiLeptonic_4f_tt+LF", "TTbbSemiLeptonic_4f_tt+C", "TTToSemiLeptonic_tt+B"]
-        datasets_in_folder = list(filter(lambda x : x.endswith(".parquet"), os.listdir(folder)))
-        datasets_in_folder = [dataset for dataset in datasets_in_folder if not any(s in dataset for s in cfg["input"]["exclude_samples"])]
-        datasets_in_folder = [f"{folder}/{dataset}" for dataset in datasets_in_folder]
-        datasets += datasets_in_folder
-    return datasets
-
-def get_events(dataset, shuffle=True, seed=None):
-    events = dataset.train
-    i_permutation = np.random.RandomState(seed=seed).permutation(len(events))
-    events = events[i_permutation]
-    mask_btag = ak.values_astype(events.JetGood.btag_M, bool)
-    events = ak.with_field(events, events.JetGood[mask_btag], "BJetGood")
-    transformer = WeightedQuantileTransformer(n_quantiles=100000, output_distribution='uniform')
-    mask_tthbb = events.tthbb == 1
-    X = events.spanet_output.tthbb[mask_tthbb]
-    transformer.fit(X, sample_weight=-events.event.weight[mask_tthbb]) # Fit quantile transformer on ttHbb sample only (- in front of weights due to negative weights in DCTR samples)
-    transformed_score = transformer.transform(events.spanet_output.tthbb)
-    events["spanet_output"] = ak.with_field(events.spanet_output, transformed_score, "tthbb_transformed")
-    return events
-
-def get_cr_mask(events, params):
-    mask = (
-        (events.spanet_output.tthbb_transformed < params["tthbb_transformed_max"]) &
-        (events.spanet_output.ttlf < params["ttlf_max"])
-    )
-    return mask
-
-def get_njet_reweighting(events, mask_num, mask_den):
-    reweighting_map_njet = {}
-    njet = ak.num(events.JetGood)
-    w = events.event.weight
-    w_nj = np.ones(len(events))
-    for nj in range(4,7):
-        mask_nj = (njet == nj)
-        reweighting_map_njet[nj] = sum(w[mask_num & mask_nj]) / sum(w[mask_den & mask_nj])
-        w_nj = np.where(mask_den & mask_nj, reweighting_map_njet[nj], w_nj)
-    reweighting_map_njet[7] = sum(w[mask_num & (njet >= 7)]) / sum(w[mask_den & (njet >= 7)])
-    w_nj = np.where(mask_den & (njet >= 7), reweighting_map_njet[7], w_nj)
-    return w_nj
-
-def get_input_features(events):
-    input_features = {
-        "njet" : ak.num(events.JetGood),
-        "nbjet" : ak.num(events.BJetGood),
-        "ht" : events.events.ht,
-        "ht_b" : events.events.bjets_ht,
-        "ht_light" : events.events.lightjets_ht,
-        "drbb_avg" : events.events.drbb_avg,
-        "mbb_max" : events.events.mbb_max,
-        "mbb_min" : events.events.mbb_min,
-        "mbb_closest" : events.events.mbb_closest,
-        "drbb_min" : events.events.drbb_min,
-        "detabb_min" : events.events.detabb_min,
-        "dphibb_min" : events.events.dphibb_min,
-        "jet_pt_1" : events.JetGood.pt[:,0],
-        "jet_pt_2" : events.JetGood.pt[:,1],
-        "jet_pt_3" : events.JetGood.pt[:,2],
-        "jet_pt_4" : events.JetGood.pt[:,3],
-        "bjet_pt_1" : events.BJetGood.pt[:,0],
-        "bjet_pt_2" : events.BJetGood.pt[:,1],
-        "bjet_pt_3" : events.BJetGood.pt[:,2],
-        "jet_eta_1" : events.JetGood.eta[:,0],
-        "jet_eta_2" : events.JetGood.eta[:,1],
-        "jet_eta_3" : events.JetGood.eta[:,2],
-        "jet_eta_4" : events.JetGood.eta[:,3],
-        "bjet_eta_1" : events.BJetGood.eta[:,0],
-        "bjet_eta_2" : events.BJetGood.eta[:,1],
-        "bjet_eta_3" : events.BJetGood.eta[:,2],
-    }
-
-    return input_features
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--cfg', type=str, help="Config file with parameters for training", required=True)
-    parser.add_argument('-o', '--output', type=str, help="Output folder", required=True)
+    parser.add_argument('-l', '--log_dir', type=str, help="Output folder", required=True)
+    parser.add_argument('--save', action='store_true', help="Save the train and test datasets")
     parser.add_argument('--test', action='store_true', help="Run in test mode")
     args = parser.parse_args()
 
     cfg = OmegaConf.load(args.cfg)
+
+    cfg_input = cfg["input"]
     cfg_cuts = cfg["cuts"]
     cfg_preprocessing = cfg["preprocessing"]
     cfg_model = cfg["model"]
     cfg_training = cfg["training"]
 
-    os.makedirs(args.output, exist_ok=True)
-    datasets = get_datasets_list(cfg)
-    dataset_training = Dataset(datasets, "test.h5", cfg_preprocessing, frac_train=1.0, shuffle=False, reweigh=True, has_data=True)
+    os.makedirs(args.log_dir, exist_ok=True)
+    datasets = get_datasets_list(cfg_input)
+    dataset_training = Dataset(datasets, cfg_preprocessing, frac_train=1.0, shuffle=False, reweigh=True, has_data=True)
+    #dataset_training.save(os.path.join(args.log_dir, "datasets", "dataset_full_Run2.parquet"))
     events = get_events(dataset_training, shuffle=cfg_preprocessing["shuffle"], seed=cfg_preprocessing["seed"])
     mask_cr = get_cr_mask(events, cfg_cuts["cr1"])
 
@@ -141,8 +67,9 @@ if __name__ == "__main__":
         if cfg_preprocessing["num_workers"] > 0:
             raise NotImplementedError("num_workers > 0: multiprocessing is not supported yet in the data preprocessing")
 
-    train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=cfg_training["batch_size"], num_workers=cfg_preprocessing["num_workers"], shuffle=False)
-    val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=cfg_training["batch_size"], num_workers=cfg_preprocessing["num_workers"], shuffle=False)
+    # By setting shuffle=True, the DataLoader will shuffle the data at the beginning of each epoch
+    train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=cfg_training["batch_size"], num_workers=cfg_preprocessing["num_workers"], shuffle=True)
+    val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=cfg_training["batch_size"], num_workers=cfg_preprocessing["num_workers"], shuffle=True)
 
     # Instantiate the model
     input_size = len(input_features)
@@ -153,7 +80,11 @@ if __name__ == "__main__":
     print("Initialized model:")
     print(model)
 
-    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=0.00, patience=cfg_training["patience"], verbose=False, mode="min")
-    trainer = Trainer(max_epochs=cfg_training["epochs"], default_root_dir=args.output, callbacks=[early_stop_callback])
+    callbacks = [
+        ModelCheckpoint(monitor="val_loss", mode="min", save_top_k=-1, filename="{epoch:03d}-{step:03d}-{val_loss:.2f}", save_last=True, verbose=True),
+        EarlyStopping(monitor="val_loss", min_delta=0.00, patience=cfg_training["patience"], verbose=False, mode="min"),
+        LearningRateMonitor(logging_interval='epoch')
+    ]
+    trainer = Trainer(max_epochs=cfg_training["epochs"], default_root_dir=args.log_dir, callbacks=callbacks)
     print("Training model...")
     trainer.fit(model, train_dataloader, val_dataloader)
