@@ -6,8 +6,6 @@ import argparse
 import numpy as np
 import awkward as ak
 from omegaconf import OmegaConf
-import matplotlib
-import matplotlib.pyplot as plt
 
 from tthbb_spanet.lib.dataset.h5 import Dataset
 from ttbb_dctr.models.binary_classifier import BinaryClassifier
@@ -62,12 +60,15 @@ if __name__ == "__main__":
                         ["Data", "MC", "ttbb", "ttcc", "ttlf"]):
         input_features = get_input_features(events[mask])
         for score in ["tthbb_transformed", "ttlf"]:
-            features_dict_list = [{k: v} for k, v in input_features.items()]
+            y = events[mask].spanet_output[score]
+            w = events[mask].event.weight
             if args.workers > 1:
+                def f(varname_x):
+                    return plot_correlation(input_features[varname_x], y, w, varname_x, title, score, plot_dir)
                 with Pool(processes=args.workers) as pool:
-                    pool.map(partial(plot_correlation, events=events[mask], title=title, score=score, plot_dir=plot_dir),
-                            features_dict_list)
+                    pool.map(f, list(input_features.keys()))
                     pool.close()
+                    pool.join()
             else:
                 for x_dict in features_dict_list:
                     plot_correlation(x_dict, events[mask], title, score, plot_dir)

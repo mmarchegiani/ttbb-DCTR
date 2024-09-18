@@ -4,11 +4,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 import mplhep as hep
 
+matplotlib.use("agg")
 hep.style.use("CMS")
 plt.rcParams["figure.figsize"] = [8,8]
 plt.rcParams["font.size"] = 18
-
-
 
 bins = {
     "njet" : 6,
@@ -68,15 +67,11 @@ ranges = {
     "bjet_eta_3" : (-2.4, 2.4)
 }
 
-def plot_correlation(x_dict, events, title, score, plot_dir):
-    assert len(x_dict) == 1, "Only one variable can be plotted"
-    varname_x, x = x_dict.popitem()
+def plot_correlation(x, y, w, varname_x, title, score, plot_dir):
     print(f"Plotting {score} vs {varname_x} for {title}")
     bins_feature = bins[varname_x]
     ranges_feature = ranges[varname_x]
-    x = np.array(x)
-    y = np.array(events.spanet_output[score])
-    w = np.array(events.event.weight)
+    x, y, w = np.array(x), np.array(y), np.array(w)
     # Invert negative weights for minor backgrounds
     if title not in ["Data", "ttbb"]:
         w = -w
@@ -90,4 +85,4 @@ def plot_correlation(x_dict, events, title, score, plot_dir):
     filename = os.path.join(plot_dir, f"{title.lower()}_{score}_vs_{varname_x}.png")
     print(f"Saving {filename}")
     plt.savefig(filename, dpi=300)
-    plt.close()
+    plt.close(fig)
