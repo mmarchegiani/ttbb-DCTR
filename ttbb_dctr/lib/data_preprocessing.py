@@ -1,9 +1,12 @@
+import os
 import numpy as np
 import awkward as ak
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 
+from tthbb_spanet.lib.dataset.h5 import Dataset
 from ttbb_dctr.lib.quantile_transformer import WeightedQuantileTransformer
 
 def get_datasets_list(cfg):
@@ -13,7 +16,7 @@ def get_datasets_list(cfg):
         print(f"Processing folder {folder}")
         exclude_samples = ["ttHTobb_ttToSemiLep", "TTbbSemiLeptonic_4f_tt+LF", "TTbbSemiLeptonic_4f_tt+C", "TTToSemiLeptonic_tt+B"]
         datasets_in_folder = list(filter(lambda x : x.endswith(".parquet"), os.listdir(folder)))
-        datasets_in_folder = [dataset for dataset in datasets_in_folder if not any(s in dataset for s in cfg["input"]["exclude_samples"])]
+        datasets_in_folder = [dataset for dataset in datasets_in_folder if not any(s in dataset for s in cfg["exclude_samples"])]
         datasets_in_folder = [f"{folder}/{dataset}" for dataset in datasets_in_folder]
         datasets += datasets_in_folder
     return datasets
@@ -94,25 +97,54 @@ def _stack_arrays(input_features: list, dtype=np.float32, normalize=True):
         X_np = scaler.transform(X_np)
     return torch.from_numpy(X_np)
 
-def get_tensors(input_features, labels, weights, dtype=np.float32, device="cuda", normalize_inputs=True, normalize_weights=True):
+def get_tensors(cfg, dtype=np.float32, normalize_inputs=True, normalize_weights=True):
+    device = get_device()
+    cfg_input = cfg["input"]
+    cfg_preprocessing = cfg["preprocessing"]
+    cfg_cuts = cfg["cuts"]
+    cfg_training = cfg["training"]
+    datasets = get_datasets_list(cfg_input)
+    dataset_training = Dataset(datasets, cfg_preprocessing, frac_train=1.0, shuffle=False, reweigh=True, has_data=True)
+    events = get_events(dataset_training, shuffle=cfg_preprocessing["shuffle"], seed=cfg_preprocessing["seed"])
+    # Select events in control region
+    mask_cr = get_cr_mask(events, cfg_cuts["cr1"])
+    events = events[mask_cr]
+
+    # Define event classes
+    mask_data = (events.data == 1)
+    mask_data_minus_minor_bkg = (events.data == 1) | (events.ttcc == 1) | (events.ttlf == 1) | (events.tt2l2nu == 1) | (events.wjets == 1) | (events.singletop == 1) | (events.tthbb == 1)
+    mask_ttbb = (events.ttbb == 1)
+    weights = events.event.weight
+    w_nj = get_njet_reweighting(events, mask_data_minus_minor_bkg, mask_ttbb)
+    input_features = get_input_features(events)
+    labels = events.dctr
+
+    device = get_device()
+    print(f"Using device: {device}")
+
     if type(input_features) is dict:
         input_features = list(input_features.values())
     elif type(input_features) is list:
         pass
     else:
         raise ValueError("input_features must be either a dictionary or a list")
-    X_train = _stack_arrays(input_features, dtype=dtype, normalize=normalize_inputs)
-    Y_train = torch.tensor(labels, dtype=torch.long)
+    X = _stack_arrays(input_features, dtype=dtype, normalize=normalize_inputs)
+    Y = torch.tensor(labels, dtype=torch.long)
     W = torch.Tensor(weights)
 
     # Move inputs, weights and labels to GPU, if available
     if (device.type == "cuda") | (device == "cuda"):
-        X_train, Y_train, W = X_train.to(device), Y_train.to(device), W.to(device)
+        X, Y, W = X.to(device), Y.to(device), W.to(device)
 
     if normalize_weights:
         W = W / W.mean()
 
-    return X_train, Y_train, W
+    # Since the shuffling is already performed by permutation of the events, we don't shuffle the tensors here in order to maintain the same order in events and X_train, X_test
+    X_train, X_test = train_test_split(X, test_size=cfg_preprocessing["test_size"], shuffle=False)
+    Y_train, Y_test = train_test_split(Y, test_size=cfg_preprocessing["test_size"], shuffle=False)
+    W_train, W_test = train_test_split(W, test_size=cfg_preprocessing["test_size"], shuffle=False)
+
+    return X_train, X_test, Y_train, Y_test, W_train, W_test
 
 def get_dataloader(X_train, Y_train, W, batch_size=2048, shuffle=True, num_workers=4):
     dataloader = DataLoader(
@@ -122,3 +154,18 @@ def get_dataloader(X_train, Y_train, W, batch_size=2048, shuffle=True, num_worke
         num_workers=num_workers
     )
     return dataloader
+
+def get_device():
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+def get_dataloaders(cfg, dtype=np.float32, normalize_inputs=True, normalize_weights=True):
+    X_train, X_test, Y_train, Y_test, W_train, W_test = get_tensors(cfg, dtype=dtype, normalize_inputs=normalize_inputs, normalize_weights=normalize_weights)
+
+    if cfg_preprocessing["num_workers"]:
+        if cfg_preprocessing["num_workers"] > 0:
+            raise NotImplementedError("num_workers > 0: multiprocessing is not supported yet in the data preprocessing")
+
+    train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=cfg_training["batch_size"], num_workers=cfg_preprocessing["num_workers"], shuffle=True)
+    val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=cfg_training["batch_size"], num_workers=cfg_preprocessing["num_workers"], shuffle=True)
+
+    return train_dataloader, val_dataloader
