@@ -4,8 +4,12 @@ from multiprocessing import Pool
 from functools import partial
 import argparse
 import numpy as np
+import pandas as pd
 import awkward as ak
 from omegaconf import OmegaConf
+
+import torch
+import torch.nn.functional as F
 
 from tthbb_spanet.lib.dataset.h5 import Dataset
 from ttbb_dctr.models.binary_classifier import BinaryClassifier
@@ -33,9 +37,20 @@ if __name__ == "__main__":
     plot_dir = os.path.join(args.log_directory, "plots")
     cfg = OmegaConf.load(args.cfg)
 
-    #X_train, X_test, Y_train, Y_test, W_train, W_test = get_tensors(cfg)
-    #model = load_model(args.log_directory)
-    #print(model)
+    # Load model and compute predictions to extract the DCTR weight
+    X_train, X_test, Y_train, Y_test, W_train, W_test = get_tensors(cfg)
+    X_full = torch.concatenate((X_train, X_test))
+    Y_full = torch.concatenate((Y_train, Y_test))
+    W_full = torch.concatenate((W_train, W_test))
+    model = load_model(args.log_directory)
+    model.eval()
+    with torch.no_grad():
+        predictions = model(X_full)
+    predictions = F.sigmoid(predictions)
+    score = ak.Array(predictions[:,0].to("cpu").detach().numpy())
+    weight_ttbb = score / (1-score)
+    MASK_ttbb = np.array(Y_full.to("cpu")) == 0
+    MASK_data = np.array(Y_full.to("cpu")) == 1
 
     device = get_device()
     cfg_input = cfg["input"]
@@ -56,19 +71,22 @@ if __name__ == "__main__":
     mask_ttlf = mask_mc & (events.ttlf == 1)
 
     os.makedirs(plot_dir, exist_ok=True)
+    for subdir in ["correlations_spanet", "correlation_matrix"]:
+        os.makedirs(os.path.join(plot_dir, subdir), exist_ok=True)
     for mask, title in zip([mask_data, mask_mc, mask_ttbb, mask_ttcc, mask_ttlf],
                         ["Data", "MC", "ttbb", "ttcc", "ttlf"]):
         input_features = get_input_features(events[mask])
         for score in ["tthbb_transformed", "ttlf"]:
             y = events[mask].spanet_output[score]
             w = events[mask].event.weight
-            if args.workers > 1:
-                def f(varname_x):
-                    return plot_correlation(input_features[varname_x], y, w, varname_x, title, score, plot_dir)
-                with Pool(processes=args.workers) as pool:
-                    pool.map(f, list(input_features.keys()))
-                    pool.close()
-                    pool.join()
-            else:
-                for x_dict in features_dict_list:
-                    plot_correlation(x_dict, events[mask], title, score, plot_dir)
+            def f(varname_x):
+                return plot_correlation(input_features[varname_x], y, w, varname_x, title, score, os.path.join(plot_dir, "correlations_spanet"))
+            with Pool(processes=args.workers) as pool:
+                pool.map(f, list(input_features.keys()))
+                pool.close()
+                pool.join()
+
+        df = pd.DataFrame(input_features)
+        df["w_dctr"] = weight_ttbb[mask]
+        corr = df.corr()
+        plot_correlation_matrix(corr, title, os.path.join(plot_dir, "correlation_matrix"))

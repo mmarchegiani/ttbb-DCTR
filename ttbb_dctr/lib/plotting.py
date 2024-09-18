@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import seaborn as sns
 import mplhep as hep
 
 matplotlib.use("agg")
@@ -83,6 +84,17 @@ def plot_correlation(x, y, w, varname_x, title, score, plot_dir):
     ax.set_ylabel(score)
     #ax.set_title(title)
     filename = os.path.join(plot_dir, f"{title.lower()}_{score}_vs_{varname_x}.png")
+    print(f"Saving {filename}")
+    plt.savefig(filename, dpi=300)
+    plt.close(fig)
+
+def plot_correlation_matrix(corr, title, plot_dir):
+    fig, ax = plt.subplots(1,1, figsize=(16,16))
+    sns.heatmap(corr, annot=False, cmap='coolwarm', square=True, linewidths=0.5, vmin=-1)
+
+    ax.set_title(f"Correlation Matrix for {title}", fontsize=24)
+
+    filename = os.path.join(plot_dir, f"correlation_matrix_{title.lower()}.png")
     print(f"Saving {filename}")
     plt.savefig(filename, dpi=300)
     plt.close(fig)
