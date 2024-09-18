@@ -3,10 +3,9 @@ import torch.nn as nn
 import pytorch_lightning as pl
 
 class BinaryClassifier(pl.LightningModule):
-    def __init__(self, input_size, hidden_size, output_size, num_hidden_layers, learning_rate=1e-3):
+    def __init__(self, input_size, hidden_size, output_size, num_hidden_layers, learning_rate=1e-3, weight_decay=0):
         super(BinaryClassifier, self).__init__()
         self.save_hyperparameters()
-        self.learning_rate = learning_rate
         self.criterion = nn.BCEWithLogitsLoss(reduction='none') # Note: with the BCEWithLogitsLoss, a sigmoid is applied to the output of the model
 
         layers = [
@@ -60,4 +59,4 @@ class BinaryClassifier(pl.LightningModule):
         return y_pred
 
     def configure_optimizers(self):
-        return torch.optim.SGD(self.parameters(), lr=self.learning_rate)
+        return torch.optim.SGD(self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay)
