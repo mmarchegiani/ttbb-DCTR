@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 
 from tthbb_spanet.lib.dataset.h5 import Dataset
 from ttbb_dctr.lib.quantile_transformer import WeightedQuantileTransformer
+from ttbb_dctr.utils.utils import get_device
 
 def get_datasets_list(cfg):
     folders = cfg["folders"]
@@ -155,12 +156,11 @@ def get_dataloader(X_train, Y_train, W, batch_size=2048, shuffle=True, num_worke
     )
     return dataloader
 
-def get_device():
-    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-def get_dataloaders(cfg, dtype=np.float32, normalize_inputs=True, normalize_weights=True):
+def get_dataloaders(cfg, dtype=np.float32, normalize_inputs=True, normalize_weights=True, input_size=False):
     X_train, X_test, Y_train, Y_test, W_train, W_test = get_tensors(cfg, dtype=dtype, normalize_inputs=normalize_inputs, normalize_weights=normalize_weights)
 
+    cfg_preprocessing = cfg["preprocessing"]
+    cfg_training = cfg["training"]
     if cfg_preprocessing["num_workers"]:
         if cfg_preprocessing["num_workers"] > 0:
             raise NotImplementedError("num_workers > 0: multiprocessing is not supported yet in the data preprocessing")
@@ -168,4 +168,7 @@ def get_dataloaders(cfg, dtype=np.float32, normalize_inputs=True, normalize_weig
     train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=cfg_training["batch_size"], num_workers=cfg_preprocessing["num_workers"], shuffle=True)
     val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=cfg_training["batch_size"], num_workers=cfg_preprocessing["num_workers"], shuffle=True)
 
-    return train_dataloader, val_dataloader
+    if input_size:
+        return train_dataloader, val_dataloader, X_train.shape[1]
+    else:
+        return train_dataloader, val_dataloader
