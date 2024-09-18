@@ -20,7 +20,8 @@ setup(
         'omegaconf',
         'scikit-learn',
         'htcondor',
-        'pytorch_lightning'
+        'pytorch_lightning',
+        'seaborn'
     ],
     classifiers=[
         'Development Status :: 1 - Planning',
