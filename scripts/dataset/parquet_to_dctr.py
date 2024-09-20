@@ -8,7 +8,7 @@ import pandas as pd
 import awkward as ak
 from omegaconf import OmegaConf
 
-from tthbb_spanet.lib.dataset.h5 import DCTRDataset
+from tthbb_spanet import DCTRDataset
 from ttbb_dctr.lib.data_preprocessing import get_datasets_list, get_events_with_branches, get_cr_mask
 
 if __name__ == "__main__":

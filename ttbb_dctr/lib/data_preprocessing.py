@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
-from tthbb_spanet.lib.dataset.h5 import DCTRDataset
+from tthbb_spanet import DCTRDataset
 from ttbb_dctr.lib.quantile_transformer import WeightedQuantileTransformer
 from ttbb_dctr.utils.utils import get_device
 
@@ -109,7 +109,6 @@ def get_tensors(events, dtype=np.float32, normalize_inputs=True, normalize_weigh
     labels = events.dctr
 
     device = get_device()
-    print(f"Using device: {device}")
 
     if type(input_features) is dict:
         input_features = list(input_features.values())

@@ -11,7 +11,7 @@ from omegaconf import OmegaConf
 import torch
 import torch.nn.functional as F
 
-from tthbb_spanet.lib.dataset.h5 import DCTRDataset
+from tthbb_spanet import DCTRDataset
 from ttbb_dctr.models.binary_classifier import BinaryClassifier
 from ttbb_dctr.lib.data_preprocessing import get_tensors, get_device, get_datasets_list, get_input_features
 from ttbb_dctr.lib.plotting import plot_correlation, plot_correlation_matrix
