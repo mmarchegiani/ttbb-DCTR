@@ -129,7 +129,7 @@ def get_tensors(events, dtype=np.float32, normalize_inputs=True, normalize_weigh
 
     return X, Y, W
 
-def get_dataloader(X, Y, W, batch_size=2048, shuffle=True, num_workers=4):
+def get_dataloader(X, Y, W, batch_size=2048, shuffle=True, num_workers=0):
     dataloader = DataLoader(
         TensorDataset(X, Y, W),
         batch_size=batch_size,

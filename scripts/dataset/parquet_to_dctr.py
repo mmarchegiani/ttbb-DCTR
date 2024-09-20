@@ -25,7 +25,7 @@ if __name__ == "__main__":
     print("Cuts configuration:")
     print(cfg_cuts)
     datasets = get_datasets_list(cfg_input)
-    dataset = DCTRDataset(datasets, cfg_preprocessing, shuffle=False, reweigh=True, has_data=True)
+    dataset = DCTRDataset(datasets, cfg_preprocessing, shuffle=True, reweigh=True, has_data=True)
     dataset.df = get_events_with_branches(dataset)
     dataset.store_masks({k : get_cr_mask(dataset.df, v) for k, v in cfg_cuts.items()})
     dataset.save_all(args.output)

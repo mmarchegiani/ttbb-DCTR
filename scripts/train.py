@@ -32,7 +32,7 @@ if __name__ == "__main__":
     X_train, Y_train, W_train = get_tensors(events_train, normalize_inputs=True, normalize_weights=True)
     X_test, Y_test, W_test = get_tensors(events_test, normalize_inputs=True, normalize_weights=True)
     train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=cfg_training["batch_size"], shuffle=True)
-    val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=cfg_training["batch_size"], shuffle=True)
+    val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=cfg_training["batch_size"], shuffle=False) # Do not shuffle validation dataset
     # Instantiate the model
     input_size = X_train.shape[1]
     model = BinaryClassifier(input_size, **cfg_model, learning_rate=cfg_training["learning_rate"], weight_decay=cfg_training.get("weight_decay", 0))
