@@ -88,7 +88,8 @@ def plot_correlation(x, y, w, varname_x, title, score, plot_dir):
     plt.savefig(filename, dpi=300)
     plt.close(fig)
 
-def plot_correlation_matrix(corr, title, plot_dir):
+def plot_correlation_matrix(df, title, plot_dir):
+    corr = df.corr()
     fig, ax = plt.subplots(1,1, figsize=(16,16))
     sns.heatmap(corr, annot=False, cmap='coolwarm', square=True, linewidths=0.5, vmin=-1)
 

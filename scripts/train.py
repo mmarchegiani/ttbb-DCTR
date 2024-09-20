@@ -10,9 +10,10 @@ from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
-from ttbb_dctr.lib.data_preprocessing import get_dataloaders
+from ttbb_dctr.lib.data_preprocessing import get_tensors, get_dataloader
 from ttbb_dctr.models.binary_classifier import BinaryClassifier
 from ttbb_dctr.utils.utils import get_device
+from tthbb_spanet.lib.dataset.h5 import DCTRDataset
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -26,8 +27,12 @@ if __name__ == "__main__":
     cfg_training = cfg["training"]
 
     os.makedirs(args.log_dir, exist_ok=True)
-    train_dataloader, val_dataloader, input_size = get_dataloaders(cfg, input_size=True)
-
+    events_train = ak.from_parquet(cfg_training["training_file"])
+    events_test = ak.from_parquet(cfg_training["test_file"])
+    X_train, Y_train, W_train = get_tensors(events_train, normalize_inputs=True, normalize_weights=True)
+    X_test, Y_test, W_test = get_tensors(events_test, normalize_inputs=True, normalize_weights=True)
+    train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=cfg_training["batch_size"], shuffle=True)
+    val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=cfg_training["batch_size"], shuffle=True)
     # Instantiate the model
     model = BinaryClassifier(input_size, **cfg_model, learning_rate=cfg_training["learning_rate"], weight_decay=cfg_training["weight_decay"])
 

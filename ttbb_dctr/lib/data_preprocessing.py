@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
-from tthbb_spanet.lib.dataset.h5 import Dataset
+from tthbb_spanet.lib.dataset.h5 import DCTRDataset
 from ttbb_dctr.lib.quantile_transformer import WeightedQuantileTransformer
 from ttbb_dctr.utils.utils import get_device
 
@@ -22,10 +22,8 @@ def get_datasets_list(cfg):
         datasets += datasets_in_folder
     return datasets
 
-def get_events(dataset, shuffle=True, seed=None):
-    events = dataset.train
-    i_permutation = np.random.RandomState(seed=seed).permutation(len(events))
-    events = events[i_permutation]
+def get_events_with_branches(dataset):
+    events = dataset.df
     mask_btag = ak.values_astype(events.JetGood.btag_M, bool)
     events = ak.with_field(events, events.JetGood[mask_btag], "BJetGood")
     transformer = WeightedQuantileTransformer(n_quantiles=100000, output_distribution='uniform')
@@ -37,9 +35,11 @@ def get_events(dataset, shuffle=True, seed=None):
     return events
 
 def get_cr_mask(events, params):
+    tthbb_transformed_max = params.get("tthbb_transformed_max", 1.1)
+    ttlf_max = params.get("ttlf_max", 1.1)
     mask = (
-        (events.spanet_output.tthbb_transformed < params["tthbb_transformed_max"]) &
-        (events.spanet_output.ttlf < params["ttlf_max"])
+        (events.spanet_output.tthbb_transformed < tthbb_transformed_max) &
+        (events.spanet_output.ttlf < ttlf_max)
     )
     return mask
 
@@ -98,19 +98,7 @@ def _stack_arrays(input_features: list, dtype=np.float32, normalize=True):
         X_np = scaler.transform(X_np)
     return torch.from_numpy(X_np)
 
-def get_tensors(cfg, dtype=np.float32, normalize_inputs=True, normalize_weights=True):
-    device = get_device()
-    cfg_input = cfg["input"]
-    cfg_preprocessing = cfg["preprocessing"]
-    cfg_cuts = cfg["cuts"]
-    cfg_training = cfg["training"]
-    datasets = get_datasets_list(cfg_input)
-    dataset_training = Dataset(datasets, cfg_preprocessing, frac_train=1.0, shuffle=False, reweigh=True, has_data=True)
-    events = get_events(dataset_training, shuffle=cfg_preprocessing["shuffle"], seed=cfg_preprocessing["seed"])
-    # Select events in control region
-    mask_cr = get_cr_mask(events, cfg_cuts["cr1"])
-    events = events[mask_cr]
-
+def get_tensors(events, dtype=np.float32, normalize_inputs=True, normalize_weights=True):
     # Define event classes
     mask_data = (events.data == 1)
     mask_data_minus_minor_bkg = (events.data == 1) | (events.ttcc == 1) | (events.ttlf == 1) | (events.tt2l2nu == 1) | (events.wjets == 1) | (events.singletop == 1) | (events.tthbb == 1)
@@ -140,35 +128,13 @@ def get_tensors(cfg, dtype=np.float32, normalize_inputs=True, normalize_weights=
     if normalize_weights:
         W = W / W.mean()
 
-    # Since the shuffling is already performed by permutation of the events, we don't shuffle the tensors here in order to maintain the same order in events and X_train, X_test
-    X_train, X_test = train_test_split(X, test_size=cfg_preprocessing["test_size"], shuffle=False)
-    Y_train, Y_test = train_test_split(Y, test_size=cfg_preprocessing["test_size"], shuffle=False)
-    W_train, W_test = train_test_split(W, test_size=cfg_preprocessing["test_size"], shuffle=False)
+    return X, Y, W
 
-    return X_train, X_test, Y_train, Y_test, W_train, W_test
-
-def get_dataloader(X_train, Y_train, W, batch_size=2048, shuffle=True, num_workers=4):
+def get_dataloader(X, Y, W, batch_size=2048, shuffle=True, num_workers=4):
     dataloader = DataLoader(
-        TensorDataset(X_train, Y_train, W),
+        TensorDataset(X, Y, W),
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=num_workers
     )
     return dataloader
-
-def get_dataloaders(cfg, dtype=np.float32, normalize_inputs=True, normalize_weights=True, input_size=False):
-    X_train, X_test, Y_train, Y_test, W_train, W_test = get_tensors(cfg, dtype=dtype, normalize_inputs=normalize_inputs, normalize_weights=normalize_weights)
-
-    cfg_preprocessing = cfg["preprocessing"]
-    cfg_training = cfg["training"]
-    if cfg_preprocessing["num_workers"]:
-        if cfg_preprocessing["num_workers"] > 0:
-            raise NotImplementedError("num_workers > 0: multiprocessing is not supported yet in the data preprocessing")
-
-    train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=cfg_training["batch_size"], num_workers=cfg_preprocessing["num_workers"], shuffle=True)
-    val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=cfg_training["batch_size"], num_workers=cfg_preprocessing["num_workers"], shuffle=True)
-
-    if input_size:
-        return train_dataloader, val_dataloader, X_train.shape[1]
-    else:
-        return train_dataloader, val_dataloader

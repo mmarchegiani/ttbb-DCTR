@@ -11,10 +11,10 @@ from omegaconf import OmegaConf
 import torch
 import torch.nn.functional as F
 
-from tthbb_spanet.lib.dataset.h5 import Dataset
+from tthbb_spanet.lib.dataset.h5 import DCTRDataset
 from ttbb_dctr.models.binary_classifier import BinaryClassifier
-from ttbb_dctr.lib.data_preprocessing import get_tensors, get_device, get_datasets_list, get_events, get_input_features
-from ttbb_dctr.lib.plotting import plot_correlation
+from ttbb_dctr.lib.data_preprocessing import get_tensors, get_device, get_datasets_list, get_input_features
+from ttbb_dctr.lib.plotting import plot_correlation, plot_correlation_matrix
 
 def load_model(log_directory):
     assert "checkpoints" in os.listdir(os.path.join(log_directory)), "No checkpoints found in log directory"
@@ -35,10 +35,18 @@ if __name__ == "__main__":
         print(f"Number of workers ({args.workers}) is greater than number of CPUs ({multiprocessing.cpu_count()}). Setting number of workers to {multiprocessing.cpu_count()}")
         args.workers = multiprocessing.cpu_count()
     plot_dir = os.path.join(args.log_directory, "plots")
+
+    device = get_device()
+
     cfg = OmegaConf.load(args.cfg)
+    cfg_training = cfg["training"]
 
     # Load model and compute predictions to extract the DCTR weight
-    X_train, X_test, Y_train, Y_test, W_train, W_test = get_tensors(cfg)
+    events_train = ak.from_parquet(cfg_training["training_file"])
+    events_test = ak.from_parquet(cfg_training["test_file"])
+    events = ak.concatenate((events_train, events_test))
+    X_train, Y_train, W_train = get_tensors(events_train, normalize_inputs=True, normalize_weights=True)
+    X_test, Y_test, W_test = get_tensors(events_test, normalize_inputs=True, normalize_weights=True)
     X_full = torch.concatenate((X_train, X_test))
     Y_full = torch.concatenate((Y_train, Y_test))
     W_full = torch.concatenate((W_train, W_test))
@@ -49,21 +57,8 @@ if __name__ == "__main__":
     predictions = F.sigmoid(predictions)
     score = ak.Array(predictions[:,0].to("cpu").detach().numpy())
     weight_ttbb = score / (1-score)
-    MASK_ttbb = np.array(Y_full.to("cpu")) == 0
-    MASK_data = np.array(Y_full.to("cpu")) == 1
-
-    device = get_device()
-    cfg_input = cfg["input"]
-    cfg_preprocessing = cfg["preprocessing"]
-    cfg_cuts = cfg["cuts"]
-    cfg_training = cfg["training"]
-    datasets = get_datasets_list(cfg_input)
-    dataset_training = Dataset(datasets, cfg_preprocessing, frac_train=1.0, shuffle=False, reweigh=True, has_data=True)
-    events = get_events(dataset_training, shuffle=cfg_preprocessing["shuffle"], seed=cfg_preprocessing["seed"])
 
     # Select events in control region, without cut on tthbb
-    mask_cr_ttlf = events.ttlf < 0.6
-    events = events[mask_cr_ttlf]
     mask_data = (events.data == 1)
     mask_mc = (events.data == 0)
     mask_ttbb = mask_mc & (events.ttbb == 1)
@@ -81,12 +76,15 @@ if __name__ == "__main__":
             w = events[mask].event.weight
             def f(varname_x):
                 return plot_correlation(input_features[varname_x], y, w, varname_x, title, score, os.path.join(plot_dir, "correlations_spanet"))
-            with Pool(processes=args.workers) as pool:
-                pool.map(f, list(input_features.keys()))
-                pool.close()
-                pool.join()
+            if args.workers == 1:
+                for varname_x in input_features.keys():
+                    f(varname_x)
+            else:
+                with Pool(processes=args.workers) as pool:
+                    pool.map(f, list(input_features.keys()))
+                    pool.close()
+                    pool.join()
 
         df = pd.DataFrame(input_features)
         df["w_dctr"] = weight_ttbb[mask]
-        corr = df.corr()
-        plot_correlation_matrix(corr, title, os.path.join(plot_dir, "correlation_matrix"))
+        plot_correlation_matrix(df, title, os.path.join(plot_dir, "correlation_matrix"))
