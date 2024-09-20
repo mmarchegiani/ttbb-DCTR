@@ -1,58 +1,3 @@
-input:
-  folders:
-    - /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/2016_PreVFP
-    - /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/2016_PostVFP
-    - /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/2017
-    - /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr/parquet/2018
-
-  exclude_samples:
-    - ttHTobb_ttToSemiLep
-    - TTbbSemiLeptonic_4f_tt+LF
-    - TTbbSemiLeptonic_4f_tt+C
-    - TTToSemiLeptonic_tt+B
-
-preprocessing:
-  mapping_sample:
-    ttHTobb: tthbb
-    tt+B: ttbb
-    tt+C: ttcc
-    tt+LF: ttlf
-    TTTo2L2Nu: tt2l2nu
-    WJets: wjets
-    ST: singletop
-    DATA: data
-
-  mapping_encoding:
-    dctr:
-      ttHTobb: 1
-      tt+B: 0
-      tt+C: 1
-      tt+LF: 1
-      TTTo2L2Nu: 1
-      WJets: 1
-      ST: 1
-      DATA: 1
-
-  weights_scale:
-    ttHTobb: -1.0
-    tt+B: 1.0
-    tt+C: -1.0
-    tt+LF: -1.0
-    TTTo2L2Nu: -1.0
-    WJets: -1.0
-    ST: -1.0
-    DATA: 1.0
-
-  test_size: 0.2
-  shuffle: true
-  seed: 42
-  num_workers: 0
-
-cuts:
-  cr1:
-    tthbb_transformed_max: 0.4
-    ttlf_max: 0.6
-
 model:
   hidden_size: 50
   output_size: 1
@@ -63,6 +8,8 @@ training:
   learning_rate: 0.01
   batch_size: 8092
   patience: 10
+  training_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/full_Run2_26features/tthbb0p40_ttlf0p60/dataset_dctr_26features_tthbb0p40_ttlf0p60_train_3183804.parquet
+  test_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/full_Run2_26features/tthbb0p40_ttlf0p60/dataset_dctr_26features_tthbb0p40_ttlf0p60_test_794028.parquet
 
 jobs:
   path: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR
