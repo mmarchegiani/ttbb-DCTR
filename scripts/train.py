@@ -15,6 +15,10 @@ from ttbb_dctr.models.binary_classifier import BinaryClassifier
 from ttbb_dctr.utils.utils import get_device
 from tthbb_spanet import DCTRDataset
 
+def save_config(cfg, filename):
+    with open(filename, "w") as f:
+        OmegaConf.save(cfg, f)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--cfg', type=str, help="Config file with parameters for data preprocessing and training", required=True)
@@ -51,5 +55,6 @@ if __name__ == "__main__":
             LearningRateMonitor(logging_interval='epoch', log_weight_decay=True)
         ]
         trainer = Trainer(max_epochs=cfg_training["epochs"], default_root_dir=args.log_dir, callbacks=callbacks)
+        save_config(cfg_training, os.path.join(trainer.logger.log_dir, "cfg_training.yaml"))
         print("Training model...")
         trainer.fit(model, train_dataloader, val_dataloader)
