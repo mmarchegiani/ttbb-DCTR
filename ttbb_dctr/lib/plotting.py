@@ -1,11 +1,16 @@
 import os
 import numpy as np
+import awkward as ak
 import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 import mplhep as hep
+import hist
+from hist import Hist
 
-matplotlib.use("agg")
+from ttbb_dctr.lib.data_preprocessing import get_input_features
+
+matplotlib.use("Agg")
 hep.style.use("CMS")
 plt.rcParams["figure.figsize"] = [8,8]
 plt.rcParams["font.size"] = 18
@@ -88,7 +93,7 @@ def plot_correlation(x, y, w, varname_x, title, score, plot_dir):
     plt.savefig(filename, dpi=300)
     plt.close(fig)
 
-def plot_correlation_matrix(df, title, plot_dir):
+def plot_correlation_matrix(df, title, plot_dir, suffix=None):
     corr = df.corr()
     fig, ax = plt.subplots(1,1, figsize=(16,16))
     sns.heatmap(corr, annot=False, cmap='coolwarm', square=True, linewidths=0.5, vmin=-1)
@@ -96,6 +101,106 @@ def plot_correlation_matrix(df, title, plot_dir):
     ax.set_title(f"Correlation Matrix for {title}", fontsize=24)
 
     filename = os.path.join(plot_dir, f"correlation_matrix_{title.lower()}.png")
+    if suffix is not None:
+        filename = filename.replace(".png", f"_{suffix}.png")
     print(f"Saving {filename}")
     plt.savefig(filename, dpi=300)
     plt.close(fig)
+
+def plot_single_classifier_score(events, mask_data, mask_ttbb, plot_dir, suffix=None):
+    nbins=200
+
+    score = events.dctr_score
+    fig, ax = plt.subplots(1,1,figsize=[8,8])
+    ax.hist(score[mask_ttbb], weights=events.event.weight[mask_ttbb], histtype="step", bins=nbins, range=(0,1), label="ttbb")
+    ax.hist(score[mask_data], weights=events.event.weight[mask_data], histtype="step", bins=nbins, range=(0,1), label="Data - minor bkg")
+    ax.set_xlabel("Classifier score")
+    ax.legend()
+    filename = os.path.join(plot_dir, "score_classifier.png")
+    if suffix is not None:
+        filename = filename.replace(".png", f"_{suffix}.png")
+    plt.savefig(filename, dpi=300)
+    plt.close(fig)
+
+def plot_classifier_score(events, mask_data, mask_ttbb, mask_train, plot_dir):
+    for mask, label in zip([mask_train, ~mask_train], ["Training", "Validation"]):
+        fig, ax = plt.subplots(1,1,figsize=[8,8])
+        plot_single_classifier_score(events[mask], mask_data[mask], mask_ttbb[mask], plot_dir, suffix=label.lower())
+
+def plot_single_dctr_weight(events, mask, ax, plot_dir, stack, suffix=None):
+    nbins = 50
+    axis_w = hist.axis.Regular(nbins, 0, 2.5, flow=False, name="w")
+    axis_cat = hist.axis.StrCategory(["njet=4", "njet=5", "njet=6", "njet=7"], name="njet")
+    full_hist = Hist(axis_w, axis_cat)
+
+    mask_ttbb = events.ttbb == 1
+    weight_ttbb = events.dctr_weight
+    weight_ttbb = weight_ttbb[mask_ttbb]
+    events = events[mask_ttbb]
+    njet = ak.num(events.JetGood)
+    mask = mask[mask_ttbb]
+
+    for nj in [4,5,6,7]:
+        mask_nj = (njet == nj)
+        full_hist.fill(w=weight_ttbb[mask & mask_nj], weight=events.event.weight[mask & mask_nj], njet=f"njet={nj}")
+        s = full_hist.stack("njet")
+    w = np.array(events.event.weight[mask])
+    ax.hist(weight_ttbb[mask], weights=w, histtype="step", label="ttbb", bins=nbins, range=(0,2.5), linewidth=2, color="black")
+
+    if stack:
+        s.plot(stack=stack, histtype="fill", ax=ax)
+    else:
+        s.plot(stack=stack, histtype="step", ax=ax)
+    ax.set_xlabel("Weight $\omega = p(Data - bkg) / p(ttbb)$")
+    ax.set_ylabel("Counts")
+    ax.legend()
+    filename = os.path.join(plot_dir, "weight_ttbb.png")
+    if suffix is not None:
+        filename = filename.replace(".png", f"_{suffix}.png")
+    if stack:
+        filename = filename.replace(".png", "_stack.png")
+    plt.savefig(filename, dpi=300)
+
+def plot_dctr_weight(events, mask_train, plot_dir):
+    for stack in [True, False]:
+        #fig, axes = plt.subplots(1,2,figsize=[16,8])
+        #axes = axes.flatten()
+        for i, (mask, label) in enumerate(zip([mask_train, ~mask_train], ["Training", "Validation"])):
+            fig, ax = plt.subplots(1,1,figsize=[8,8])
+            plot_single_dctr_weight(events, mask, ax, plot_dir, stack, suffix=label.lower())
+            ax.set_title(label)
+            plt.close(fig)
+
+        #filename = os.path.join(plot_dir, "weight_ttbb_train_test.png")
+        #if stack:
+        #    filename = filename.replace(".png", "_stack.png")
+        #plt.savefig(filename, dpi=300)
+        #plt.close(fig)
+
+def plot_closure_test(events, w_nj, mask_data, mask_ttbb, plot_dir, density=False):
+    input_features = get_input_features(events)
+    weight_ttbb = events.dctr_weight
+    for i, (varname, x) in enumerate(input_features.items()):
+        fig, (ax, rax) = plt.subplots(2,1,figsize=[8,8], gridspec_kw={"height_ratios" : [3,1]}, sharex=True)
+        x = np.array(x)
+        w = np.array(events.event.weight)
+        h = ax.hist(x[mask & mask_data], weights=w[mask & mask_data], bins=bins[i], range=ranges[i], histtype="step", label="data - minor bkg", color="black", linewidth=3, density=density)
+        h_ttbb = ax.hist(x[mask & mask_ttbb], weights=w[mask & mask_ttbb], bins=bins[i], range=ranges[i], histtype="step", label="ttbb", linewidth=2, density=density)
+        h_ttbb_rwg_dctr = ax.hist(x[mask & mask_ttbb], weights=w[mask & mask_ttbb]*w_nj[mask & mask_ttbb]*weight_ttbb[mask & mask_ttbb], bins=bins[i], range=ranges[i], histtype="step", label="ttbb (DNN rwg.)", linewidth=2, density=density)
+        h_ttbb_rwg_1d = ax.hist(x[mask & mask_ttbb], weights=w[mask & mask_ttbb]*w_nj[mask & mask_ttbb], bins=bins[i], range=ranges[i], histtype="step", label="ttbb (1D rwg.)", linewidth=2, density=density)
+
+        rax.hlines(1.0, *ranges[i], colors='gray', linestyles='dashed')
+        rax.stairs(h_ttbb[0] / h[0], h[1], color=CMAP_10[0], linewidth=2, label=f"$\chi^2={round(chi2_distance(h_ttbb[0], h[0]),1)}$")
+        rax.stairs(h_ttbb_rwg_dctr[0] / h[0], h[1], color=CMAP_10[1], linewidth=2, label=f"$\chi^2={round(chi2_distance(h_ttbb_rwg_dctr[0], h[0]),1)}$")
+        rax.stairs(h_ttbb_rwg_1d[0] / h[0], h[1], color=CMAP_10[2], linewidth=2, label=f"$\chi^2={round(chi2_distance(h_ttbb_rwg_1d[0], h[0]),1)}$")
+
+        ax.set_xlim(*ranges[i])
+        ax.set_ylim(0, 1.4*max(h[0]))
+        ax.set_ylabel("Counts")
+
+        rax.set_xlabel(varname)
+        rax.set_ylabel("ttbb / (Data - minor bkg)", fontsize=10)
+        rax.set_ylim(0,2)
+        ax.legend()
+        #rax.legend()
+        plt.savefig(os.path.join(plot_dir, f"{varname}_reweighed.png"), dpi=300);
