@@ -6,8 +6,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
-from tthbb_spanet import DCTRDataset
-from ttbb_dctr.lib.quantile_transformer import WeightedQuantileTransformer
 from ttbb_dctr.utils.utils import get_device
 
 def get_datasets_list(cfg):
@@ -21,18 +19,6 @@ def get_datasets_list(cfg):
         datasets_in_folder = [f"{folder}/{dataset}" for dataset in datasets_in_folder]
         datasets += datasets_in_folder
     return datasets
-
-def get_events_with_branches(dataset):
-    events = dataset.df
-    mask_btag = ak.values_astype(events.JetGood.btag_M, bool)
-    events = ak.with_field(events, events.JetGood[mask_btag], "BJetGood")
-    transformer = WeightedQuantileTransformer(n_quantiles=100000, output_distribution='uniform')
-    mask_tthbb = events.tthbb == 1
-    X = events.spanet_output.tthbb[mask_tthbb]
-    transformer.fit(X, sample_weight=-events.event.weight[mask_tthbb]) # Fit quantile transformer on ttHbb sample only (- in front of weights due to negative weights in DCTR samples)
-    transformed_score = transformer.transform(events.spanet_output.tthbb)
-    events["spanet_output"] = ak.with_field(events.spanet_output, transformed_score, "tthbb_transformed")
-    return events
 
 def get_cr_mask(events, params):
     tthbb_transformed_max = params.get("tthbb_transformed_max", 1.1)
@@ -53,6 +39,8 @@ def get_njet_reweighting(events, mask_num, mask_den):
         reweighting_map_njet[nj] = sum(w[mask_num & mask_nj]) / sum(w[mask_den & mask_nj])
         w_nj = np.where(mask_den & mask_nj, reweighting_map_njet[nj], w_nj)
     reweighting_map_njet[7] = sum(w[mask_num & (njet >= 7)]) / sum(w[mask_den & (njet >= 7)])
+    print("1D reweighting map based on the number of jets:")
+    print(reweighting_map_njet)
     w_nj = np.where(mask_den & (njet >= 7), reweighting_map_njet[7], w_nj)
     return w_nj
 
@@ -100,11 +88,7 @@ def _stack_arrays(input_features: list, dtype=np.float32, normalize=True):
 
 def get_tensors(events, dtype=np.float32, normalize_inputs=True, normalize_weights=True):
     # Define event classes
-    mask_data = (events.data == 1)
-    mask_data_minus_minor_bkg = (events.data == 1) | (events.ttcc == 1) | (events.ttlf == 1) | (events.tt2l2nu == 1) | (events.wjets == 1) | (events.singletop == 1) | (events.tthbb == 1)
-    mask_ttbb = (events.ttbb == 1)
     weights = events.event.weight
-    w_nj = get_njet_reweighting(events, mask_data_minus_minor_bkg, mask_ttbb)
     input_features = get_input_features(events)
     labels = events.dctr
 

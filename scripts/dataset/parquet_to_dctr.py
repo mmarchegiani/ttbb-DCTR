@@ -9,12 +9,14 @@ import awkward as ak
 from omegaconf import OmegaConf
 
 from tthbb_spanet import DCTRDataset
-from ttbb_dctr.lib.data_preprocessing import get_datasets_list, get_events_with_branches, get_cr_mask
+from ttbb_dctr.lib.data_preprocessing import get_datasets_list, get_cr_mask, get_njet_reweighting
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--cfg', type=str, help="Config file with parameters for data preprocessing and training", required=True)
     parser.add_argument('-o', '--output', type=str, help="Output file path", required=True)
+    parser.add_argument('--reweigh-njet', action='store_true', help="Apply 1D reweighting based on the number of jets")
+    parser.add_argument('--dry', action='store_true', help="Dry run, do not save the dataset")
     args = parser.parse_args()
 
     cfg = OmegaConf.load(args.cfg)
@@ -26,6 +28,8 @@ if __name__ == "__main__":
     print(cfg_cuts)
     datasets = get_datasets_list(cfg_input)
     dataset = DCTRDataset(datasets, cfg_preprocessing, shuffle=True, reweigh=True, has_data=True)
-    dataset.df = get_events_with_branches(dataset)
     dataset.store_masks({k : get_cr_mask(dataset.df, v) for k, v in cfg_cuts.items()})
-    dataset.save_all(args.output)
+    if args.reweigh_njet:
+        dataset.compute_njet_weights()
+    if not args.dry:
+        dataset.save_all(args.output)
