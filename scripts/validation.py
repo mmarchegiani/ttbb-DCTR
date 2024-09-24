@@ -37,13 +37,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('log_directory', type=str, help="Pytorch Lightning Log directory containing the checkpoint and hparams.yaml file.")
     parser.add_argument('--cfg', type=str, default=None, help="Config file with parameters for data preprocessing and training. If passed as argument, it overrides the configuration stored in the Pytorch log directory.", required=False)
+    parser.add_argument('--plot_dir', type=str, default="plots", help="Output folder for plots", required=False)
     parser.add_argument('-j', '--workers', type=int, default=8, help="Number of workers for parallel processing")
     args = parser.parse_args()
 
     if args.workers > multiprocessing.cpu_count():
         print(f"Number of workers ({args.workers}) is greater than number of CPUs ({multiprocessing.cpu_count()}). Setting number of workers to {multiprocessing.cpu_count()}")
         args.workers = multiprocessing.cpu_count()
-    plot_dir = os.path.join(args.log_directory, "plots_ttlf0p60")
+    plot_dir = os.path.join(args.log_directory, args.plot_dir)
 
     device = get_device()
 
