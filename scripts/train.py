@@ -23,6 +23,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--cfg', type=str, help="Config file with parameters for data preprocessing and training", required=True)
     parser.add_argument('-l', '--log_dir', type=str, help="Output folder", required=True)
+    parser.add_argument('--threshold', action='store_true', help="Apply threshold to the DCTR output in the loss function")
     parser.add_argument('--dry', action='store_true', help="Dry run, do not train the model")
     args = parser.parse_args()
 
@@ -39,7 +40,10 @@ if __name__ == "__main__":
     val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=cfg_training["batch_size"], shuffle=False) # Do not shuffle validation dataset
     # Instantiate the model
     input_size = X_train.shape[1]
-    model = BinaryClassifier(input_size, **cfg_model, learning_rate=cfg_training["learning_rate"], weight_decay=cfg_training.get("weight_decay", 0))
+    if args.threshold:
+        model = BinaryClassifierWithThreshold(input_size, **cfg_model, learning_rate=cfg_training["learning_rate"], weight_decay=cfg_training.get("weight_decay", 0), score_threshold=cfg_training.get("score_threshold", 0.1))
+    else:
+        model = BinaryClassifier(input_size, **cfg_model, learning_rate=cfg_training["learning_rate"], weight_decay=cfg_training.get("weight_decay", 0))
 
     # Move the model to device and set training mode
     device = get_device()
@@ -55,6 +59,6 @@ if __name__ == "__main__":
             LearningRateMonitor(logging_interval='epoch', log_weight_decay=True)
         ]
         trainer = Trainer(max_epochs=cfg_training["epochs"], default_root_dir=args.log_dir, callbacks=callbacks)
-        save_config(cfg_training, os.path.join(trainer.logger.log_dir, "cfg_training.yaml"))
         print("Training model...")
         trainer.fit(model, train_dataloader, val_dataloader)
+        save_config(cfg_training, os.path.join(trainer.logger.log_dir, "cfg_training.yaml"))
