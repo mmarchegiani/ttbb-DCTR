@@ -14,8 +14,8 @@ class BinaryClassifierWithThreshold(BinaryClassifier):
         x, y, w = batch
         y_pred = self(x)
         mask = y_pred >= self.score_threshold
-        losses = self.criterion(y_pred[mask].squeeze(), y[mask].float())
-        loss = (losses * w[mask]).mean()
+        losses = self.criterion(y_pred.squeeze(), y.float())[mask.squeeze()]
+        loss = (losses * w[mask.squeeze()]).mean()
         self.log('train_loss', loss)
         return loss
 
@@ -23,8 +23,8 @@ class BinaryClassifierWithThreshold(BinaryClassifier):
         x, y, w = batch
         y_pred = self(x)
         mask = y_pred >= self.score_threshold
-        losses = self.criterion(y_pred[mask].squeeze(), y[mask].float())
-        loss = (losses * w[mask]).mean()
+        losses = self.criterion(y_pred.squeeze(), y.float())[mask.squeeze()]
+        loss = (losses * w[mask.squeeze()]).mean()
         self.log('val_loss', loss)
         return loss
 
@@ -32,7 +32,7 @@ class BinaryClassifierWithThreshold(BinaryClassifier):
         x, y, w = batch
         y_pred = self(x)
         mask = y_pred >= self.score_threshold
-        losses = self.criterion(y_pred[mask].squeeze(), y[mask].float())
-        loss = (losses * w[mask]).mean()
+        losses = self.criterion(y_pred.squeeze(), y.float())[mask.squeeze()]
+        loss = (losses * w[mask.squeeze()]).mean()
         self.log('test_loss', loss, prog_bar=True)
         return loss
