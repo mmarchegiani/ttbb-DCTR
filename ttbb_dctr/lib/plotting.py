@@ -8,12 +8,13 @@ import mplhep as hep
 import hist
 from hist import Hist
 
-from ttbb_dctr.lib.data_preprocessing import get_input_features
+np.seterr(divide="ignore", invalid="ignore", over="ignore")
 
 matplotlib.use("Agg")
 hep.style.use("CMS")
 plt.rcParams["figure.figsize"] = [8,8]
 plt.rcParams["font.size"] = 18
+CMAP_6 = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 bins = {
     "njet" : 6,
@@ -119,10 +120,12 @@ def plot_single_classifier_score(events, mask_data, mask_ttbb, plot_dir, suffix=
     filename = os.path.join(plot_dir, "score_classifier.png")
     if suffix is not None:
         filename = filename.replace(".png", f"_{suffix}.png")
+    print(f"Saving {filename}")
     plt.savefig(filename, dpi=300)
     plt.close(fig)
 
 def plot_classifier_score(events, mask_data, mask_ttbb, mask_train, plot_dir):
+    print("Plotting classifier score")
     for mask, label in zip([mask_train, ~mask_train], ["Training", "Validation"]):
         fig, ax = plt.subplots(1,1,figsize=[8,8])
         plot_single_classifier_score(events[mask], mask_data[mask], mask_ttbb[mask], plot_dir, suffix=label.lower())
@@ -130,7 +133,7 @@ def plot_classifier_score(events, mask_data, mask_ttbb, mask_train, plot_dir):
 def plot_single_dctr_weight(events, mask, ax, plot_dir, stack, suffix=None):
     nbins = 50
     axis_w = hist.axis.Regular(nbins, 0, 2.5, flow=False, name="w")
-    axis_cat = hist.axis.StrCategory(["njet=4", "njet=5", "njet=6", "njet=7"], name="njet")
+    axis_cat = hist.axis.StrCategory(["njet=4", "njet=5", "njet=6", "njet>=7"], name="njet")
     full_hist = Hist(axis_w, axis_cat)
 
     mask_ttbb = events.ttbb == 1
@@ -141,8 +144,13 @@ def plot_single_dctr_weight(events, mask, ax, plot_dir, stack, suffix=None):
     mask = mask[mask_ttbb]
 
     for nj in [4,5,6,7]:
-        mask_nj = (njet == nj)
-        full_hist.fill(w=weight_ttbb[mask & mask_nj], weight=events.event.weight[mask & mask_nj], njet=f"njet={nj}")
+        if nj == 7:
+            mask_nj = (njet >= nj)
+            njet_label = f"njet>={nj}"
+        else:
+            mask_nj = (njet == nj)
+            njet_label = f"njet={nj}"
+        full_hist.fill(w=weight_ttbb[mask & mask_nj], weight=events.event.weight[mask & mask_nj], njet=njet_label)
         s = full_hist.stack("njet")
     w = np.array(events.event.weight[mask])
     ax.hist(weight_ttbb[mask], weights=w, histtype="step", label="ttbb", bins=nbins, range=(0,2.5), linewidth=2, color="black")
@@ -159,9 +167,11 @@ def plot_single_dctr_weight(events, mask, ax, plot_dir, stack, suffix=None):
         filename = filename.replace(".png", f"_{suffix}.png")
     if stack:
         filename = filename.replace(".png", "_stack.png")
+    print(f"Saving {filename}")
     plt.savefig(filename, dpi=300)
 
 def plot_dctr_weight(events, mask_train, plot_dir):
+    print("Plotting DCTR weight")
     for stack in [True, False]:
         #fig, axes = plt.subplots(1,2,figsize=[16,8])
         #axes = axes.flatten()
@@ -177,24 +187,23 @@ def plot_dctr_weight(events, mask_train, plot_dir):
         #plt.savefig(filename, dpi=300)
         #plt.close(fig)
 
-def plot_closure_test(events, w_nj, mask_data, mask_ttbb, plot_dir, density=False):
-    input_features = get_input_features(events)
-    weight_ttbb = events.dctr_weight
-    for i, (varname, x) in enumerate(input_features.items()):
+def plot_closure_test(input_features, weight_ttbb, weights, mask_data, mask_ttbb, plot_dir, density=False):
+    assert type(input_features) == dict, "Input features should be a dictionary."
+    for varname, x in input_features.items():
         fig, (ax, rax) = plt.subplots(2,1,figsize=[8,8], gridspec_kw={"height_ratios" : [3,1]}, sharex=True)
         x = np.array(x)
-        w = np.array(events.event.weight)
-        h = ax.hist(x[mask & mask_data], weights=w[mask & mask_data], bins=bins[i], range=ranges[i], histtype="step", label="data - minor bkg", color="black", linewidth=3, density=density)
-        h_ttbb = ax.hist(x[mask & mask_ttbb], weights=w[mask & mask_ttbb], bins=bins[i], range=ranges[i], histtype="step", label="ttbb", linewidth=2, density=density)
-        h_ttbb_rwg_dctr = ax.hist(x[mask & mask_ttbb], weights=w[mask & mask_ttbb]*w_nj[mask & mask_ttbb]*weight_ttbb[mask & mask_ttbb], bins=bins[i], range=ranges[i], histtype="step", label="ttbb (DNN rwg.)", linewidth=2, density=density)
-        h_ttbb_rwg_1d = ax.hist(x[mask & mask_ttbb], weights=w[mask & mask_ttbb]*w_nj[mask & mask_ttbb], bins=bins[i], range=ranges[i], histtype="step", label="ttbb (1D rwg.)", linewidth=2, density=density)
+        w = np.array(weights)
+        h = ax.hist(x[mask_data], weights=w[mask_data], bins=bins[varname], range=ranges[varname], histtype="step", label="data - minor bkg", color="black", linewidth=3, density=density)
+        #h_ttbb = ax.hist(x[mask_ttbb], weights=w[mask_ttbb], bins=bins[varname], range=ranges[varname], histtype="step", label="ttbb", linewidth=2, density=density)
+        h_ttbb_rwg_1d = ax.hist(x[mask_ttbb], weights=w[mask_ttbb], bins=bins[varname], range=ranges[varname], color=CMAP_6[0], histtype="step", label="ttbb (1D rwg.)", linewidth=2, density=density)
+        h_ttbb_rwg_dctr = ax.hist(x[mask_ttbb], weights=w[mask_ttbb]*weight_ttbb[mask_ttbb], bins=bins[varname], range=ranges[varname], color=CMAP_6[1], histtype="step", label="ttbb (DNN rwg.)", linewidth=2, density=density)
 
-        rax.hlines(1.0, *ranges[i], colors='gray', linestyles='dashed')
-        rax.stairs(h_ttbb[0] / h[0], h[1], color=CMAP_10[0], linewidth=2, label=f"$\chi^2={round(chi2_distance(h_ttbb[0], h[0]),1)}$")
-        rax.stairs(h_ttbb_rwg_dctr[0] / h[0], h[1], color=CMAP_10[1], linewidth=2, label=f"$\chi^2={round(chi2_distance(h_ttbb_rwg_dctr[0], h[0]),1)}$")
-        rax.stairs(h_ttbb_rwg_1d[0] / h[0], h[1], color=CMAP_10[2], linewidth=2, label=f"$\chi^2={round(chi2_distance(h_ttbb_rwg_1d[0], h[0]),1)}$")
+        rax.hlines(1.0, *ranges[varname], colors='gray', linestyles='dashed')
+        #rax.stairs(h_ttbb[0] / h[0], h[1], color=CMAP_10[0], linewidth=2)
+        rax.stairs(h_ttbb_rwg_1d[0] / h[0], h[1], color=CMAP_6[0], linewidth=2)
+        rax.stairs(h_ttbb_rwg_dctr[0] / h[0], h[1], color=CMAP_6[1], linewidth=2)
 
-        ax.set_xlim(*ranges[i])
+        ax.set_xlim(*ranges[varname])
         ax.set_ylim(0, 1.4*max(h[0]))
         ax.set_ylabel("Counts")
 
@@ -203,4 +212,47 @@ def plot_closure_test(events, w_nj, mask_data, mask_ttbb, plot_dir, density=Fals
         rax.set_ylim(0,2)
         ax.legend()
         #rax.legend()
-        plt.savefig(os.path.join(plot_dir, f"{varname}_reweighed.png"), dpi=300);
+        filename = os.path.join(plot_dir, f"{varname}_reweighed.png")
+        print(f"Saving {filename}")
+        plt.savefig(filename, dpi=300)
+        plt.close(fig)
+
+
+def plot_closure_test_split_by_weight(input_features_dict, weight_ttbb, weights, mask_data, mask_ttbb, weight_cuts, plot_dir, density=False):
+    # Assert that weight_cuts is an iterable
+    assert hasattr(weight_cuts, "__iter__"), "weight_cuts should be an iterable."
+    assert len(weight_cuts[0]) == 2, "weight_cuts should contain tuples of two elements: `(w_lo, w_hi)`."
+    weight_cuts = [(0.0,0.8), (0.8,1.2), (1.2,3)]
+    ncuts = len(weight_cuts)
+    height = 8
+
+    for varname, x in input_features_dict.items():
+        fig, axes = plt.subplots(2,ncuts,figsize=[(ncuts+0.2)*height,height], gridspec_kw={"height_ratios" : [3,1]}, sharex=True)
+        axes = axes.flatten()
+        for j, (weight_lo, weight_hi) in enumerate(weight_cuts):
+            mask_weight = (weight_ttbb >= weight_lo) & (weight_ttbb < weight_hi)
+            ax = axes[j]
+            rax = axes[ncuts+j]
+            x = np.array(x)
+            w = np.array(weights)
+            h = ax.hist(x[mask_data & mask_weight], weights=w[mask_data & mask_weight], bins=bins[varname], range=ranges[varname], histtype="step", label="data - minor bkg", color="black", linewidth=3, density=density)
+            #h_ttbb = ax.hist(x[mask_ttbb & mask_weight], weights=w[mask_ttbb & mask_weight], bins=bins[varname], range=ranges[varname], histtype="step", label="ttbb", linewidth=2, density=density)
+            h_ttbb_rwg_1d = ax.hist(x[mask_ttbb & mask_weight], weights=w[mask_ttbb & mask_weight], bins=bins[varname], range=ranges[varname], color=CMAP_6[0], histtype="step", label="ttbb (1D rwg.)", linewidth=2, density=density)
+            h_ttbb_rwg_dctr = ax.hist(x[mask_ttbb & mask_weight], weights=w[mask_ttbb & mask_weight]*weight_ttbb[mask_ttbb & mask_weight], bins=bins[varname], range=ranges[varname], color=CMAP_6[1], histtype="step", label="ttbb (rwg.)", linewidth=2, density=density)
+            rax.hlines(1.0, *ranges[varname], colors='gray', linestyles='dashed')
+            #rax.stairs(h_ttbb[0] / h[0], h[1], color=CMAP_10[0], linewidth=2)
+            rax.stairs(h_ttbb_rwg_1d[0] / h[0], h[1], color=CMAP_6[0], linewidth=2)
+            rax.stairs(h_ttbb_rwg_dctr[0] / h[0], h[1], color=CMAP_6[1], linewidth=2)
+            ax.set_xlim(*ranges[varname])
+            ax.set_ylim(0, 1.4*max(max(h[0]), max(h_ttbb_rwg_dctr[0]), max(h_ttbb_rwg_1d[0])))
+            ax.set_title(f"$\omega\in$[{weight_lo},{weight_hi})")
+            ax.set_ylabel("Counts")
+            rax.set_xlabel(varname)
+            rax.set_ylabel("ttbb / (Data - minor bkg)", fontsize=10)
+            rax.set_ylim(0,2)
+            ax.legend()
+            #rax.legend()
+        filename = os.path.join(plot_dir, f"{varname}_reweighed_split_by_weight.png")
+        print(f"Saving {filename}")
+        plt.savefig(filename, dpi=300)
+        plt.close(fig)
