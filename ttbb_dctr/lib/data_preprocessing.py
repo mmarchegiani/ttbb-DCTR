@@ -4,7 +4,6 @@ import awkward as ak
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
 
 from ttbb_dctr.utils.utils import get_device
 
@@ -44,7 +43,7 @@ def get_njet_reweighting(events, mask_num, mask_den):
     w_nj = np.where(mask_den & (njet >= 7), reweighting_map_njet[7], w_nj)
     return w_nj
 
-def get_input_features(events):
+def get_input_features(events, mask=None):
     input_features = {
         "njet" : ak.num(events.JetGood),
         "nbjet" : ak.num(events.BJetGood),
@@ -73,6 +72,9 @@ def get_input_features(events):
         "bjet_eta_2" : events.BJetGood.eta[:,1],
         "bjet_eta_3" : events.BJetGood.eta[:,2],
     }
+    if mask is not None:
+        for key in input_features.keys():
+            input_features[key] = input_features[key][mask]
 
     return input_features
 
@@ -86,12 +88,7 @@ def _stack_arrays(input_features: list, dtype=np.float32, normalize=True):
         X_np = scaler.transform(X_np)
     return torch.from_numpy(X_np)
 
-def get_tensors(events, dtype=np.float32, normalize_inputs=True, normalize_weights=True):
-    # Define event classes
-    weights = events.event.weight
-    input_features = get_input_features(events)
-    labels = events.dctr
-
+def get_tensors(input_features, labels, weights, dtype=np.float32, normalize_inputs=True, normalize_weights=True):
     device = get_device()
 
     if type(input_features) is dict:
