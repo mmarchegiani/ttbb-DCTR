@@ -10,8 +10,9 @@ from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
-from ttbb_dctr.lib.data_preprocessing import get_tensors, get_dataloader
+from ttbb_dctr.lib.data_preprocessing import get_tensors, get_dataloader, get_input_features
 from ttbb_dctr.models.binary_classifier import BinaryClassifier
+from ttbb_dctr.models.binary_classifier_with_threshold import BinaryClassifierWithThreshold
 from ttbb_dctr.utils.utils import get_device
 from tthbb_spanet import DCTRDataset
 
@@ -34,8 +35,10 @@ if __name__ == "__main__":
 
     events_train = ak.from_parquet(cfg_training["training_file"])
     events_test = ak.from_parquet(cfg_training["test_file"])
-    X_train, Y_train, W_train = get_tensors(events_train, normalize_inputs=True, normalize_weights=True)
-    X_test, Y_test, W_test = get_tensors(events_test, normalize_inputs=True, normalize_weights=True)
+    input_features_train = get_input_features(events_train)
+    input_features_test = get_input_features(events_test)
+    X_train, Y_train, W_train = get_tensors(input_features_train, events_train.dctr, events_train.event.weight, normalize_inputs=True, normalize_weights=True)
+    X_test, Y_test, W_test = get_tensors(input_features_test, events_test.dctr, events_test.event.weight, normalize_inputs=True, normalize_weights=True)
     train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=cfg_training["batch_size"], shuffle=True)
     val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=cfg_training["batch_size"], shuffle=False) # Do not shuffle validation dataset
     # Instantiate the model
