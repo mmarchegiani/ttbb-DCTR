@@ -43,7 +43,7 @@ def get_njet_reweighting(events, mask_num, mask_den):
     w_nj = np.where(mask_den & (njet >= 7), reweighting_map_njet[7], w_nj)
     return w_nj
 
-def get_input_features(events, mask=None):
+def get_input_features(events, mask=None, only=None):
     input_features = {
         "njet" : ak.num(events.JetGood),
         "nbjet" : ak.num(events.BJetGood),
@@ -72,6 +72,8 @@ def get_input_features(events, mask=None):
         "bjet_eta_2" : events.BJetGood.eta[:,1],
         "bjet_eta_3" : events.BJetGood.eta[:,2],
     }
+    if only is not None:
+        input_features = {k : v for k, v in input_features.items() if k in only}
     if mask is not None:
         for key in input_features.keys():
             input_features[key] = input_features[key][mask]
