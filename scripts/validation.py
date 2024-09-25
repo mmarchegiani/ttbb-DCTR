@@ -68,6 +68,8 @@ if __name__ == "__main__":
     X_full = torch.concatenate((X_train, X_test))
     Y_full = torch.concatenate((Y_train, Y_test))
     W_full = torch.concatenate((W_train, W_test))
+
+    # Compute DCTR score and weight
     model = load_model(args.log_directory)
     model.eval()
     with torch.no_grad():
@@ -75,8 +77,16 @@ if __name__ == "__main__":
     predictions = F.sigmoid(predictions)
     score = ak.Array(predictions[:,0].to("cpu").detach().numpy())
     weight_ttbb = score / (1-score)
+
+    # Add DCTR score and weight branches to the events
     events = ak.with_field(events, score, "dctr_score")
     events = ak.with_field(events, weight_ttbb, "dctr_weight")
+    mask_train = ak.local_index(ak.num(events.JetGood)) < X_train.shape[0]
+    mask_test = ~mask_train
+    events_train = ak.with_field(events[mask_train], score[mask_train], "dctr_score")
+    events_train = ak.with_field(events_train, weight_ttbb[mask_train], "dctr_weight")
+    events_test = ak.with_field(events[mask_test], score[mask_test], "dctr_score")
+    events_test = ak.with_field(events_test, weight_ttbb[mask_test], "dctr_weight")
 
     # Select events in control region, without cut on tthbb
     mask_data = (events.data == 1)
@@ -125,12 +135,10 @@ if __name__ == "__main__":
         plot_correlation_matrix(df, title, os.path.join(plot_dir, "correlation_matrix"), suffix="spanet_output")
 
     # Plot DCTR classifier score for ttbb and data on the same plot
-    mask_train = ak.local_index(ak.num(events.JetGood)) < X_train.shape[0]
-    mask_test = ~mask_train
     plot_classifier_score(events, mask_data_minus_minor_bkg, mask_ttbb, mask_train, os.path.join(plot_dir, "classifier"))
     plot_dctr_weight(events, mask_train, os.path.join(plot_dir, "classifier"))
     print("Plotting closure test")
-    for dataset_type, mask_dataset, _input_features in zip(["train", "test"], [mask_train, mask_test], [input_features_train, input_features_test]):
+    for dataset_type, mask_dataset, _events in zip(["train", "test"], [mask_train, mask_test], [events_train, events_test]):
         plot_dir_dataset = os.path.join(plot_dir, "closure_test", dataset_type)
         plot_dir_dataset_inclusive = os.path.join(plot_dir_dataset, "inclusive")
         plot_dir_dataset_split_by_weight = os.path.join(plot_dir_dataset, "split_by_weight")
@@ -138,15 +146,15 @@ if __name__ == "__main__":
             os.makedirs(subdir, exist_ok=True)
         weight_cuts = [(0, 0.8), (0.8, 1.2), (1.2, 3)]
         def f(varname_x):
-            return plot_closure_test({varname_x : _input_features[varname_x]}, weight_ttbb[mask_dataset], events.event.weight[mask_dataset], mask_data_minus_minor_bkg[mask_dataset], mask_ttbb[mask_dataset], plot_dir_dataset_inclusive)
+            return plot_closure_test(_events, mask_data_minus_minor_bkg[mask_dataset], mask_ttbb[mask_dataset], plot_dir_dataset_inclusive, only_var=varname_x)
         def g(varname_x):
-            return plot_closure_test({varname_x : _input_features[varname_x]}, weight_ttbb[mask_dataset], events.event.weight[mask_dataset], mask_data_minus_minor_bkg[mask_dataset], mask_ttbb[mask_dataset], weight_cuts, plot_dir_dataset_split_by_weight)
+            return plot_closure_test_split_by_weight(_events, mask_data_minus_minor_bkg[mask_dataset], mask_ttbb[mask_dataset], weight_cuts, plot_dir_dataset_split_by_weight, only_var=varname_x)
         if args.workers == 1:
-            plot_closure_test(_input_features, weight_ttbb[mask_dataset], events.event.weight[mask_dataset], mask_data_minus_minor_bkg[mask_dataset], mask_ttbb[mask_dataset], plot_dir_dataset)
-            plot_closure_test_split_by_weight(_input_features, weight_ttbb[mask_dataset], events.event.weight[mask_dataset], mask_data_minus_minor_bkg[mask_dataset], mask_ttbb[mask_dataset], weight_cuts, plot_dir_dataset_split_by_weight)
+            plot_closure_test(_events, mask_data_minus_minor_bkg[mask_dataset], mask_ttbb[mask_dataset], plot_dir_dataset_inclusive)
+            plot_closure_test_split_by_weight(_events, mask_data_minus_minor_bkg[mask_dataset], mask_ttbb[mask_dataset], weight_cuts, plot_dir_dataset_split_by_weight)
         else:
             with Pool(processes=args.workers) as pool:
-                pool.map(f, list(_input_features.keys()))
-                pool.map(g, list(_input_features.keys()))
+                pool.map(f, list(input_features.keys()))
+                pool.map(g, list(input_features.keys()))
                 pool.close()
                 pool.join()
