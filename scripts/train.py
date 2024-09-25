@@ -13,6 +13,7 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from ttbb_dctr.lib.data_preprocessing import get_tensors, get_dataloader, get_input_features
 from ttbb_dctr.models.binary_classifier import BinaryClassifier
 from ttbb_dctr.models.binary_classifier_with_threshold import BinaryClassifierWithThreshold
+from ttbb_dctr.models.binary_classifier_clamp_loss import BinaryClassifierClampLoss
 from ttbb_dctr.utils.utils import get_device
 from tthbb_spanet import DCTRDataset
 
@@ -25,6 +26,7 @@ if __name__ == "__main__":
     parser.add_argument('--cfg', type=str, help="Config file with parameters for data preprocessing and training", required=True)
     parser.add_argument('-l', '--log_dir', type=str, help="Output folder", required=True)
     parser.add_argument('--threshold', action='store_true', help="Apply threshold to the DCTR output in the loss function")
+    parser.add_argument('--clamp', action='store_true', help="Apply clamp to the DCTR output in the loss function")
     parser.add_argument('--dry', action='store_true', help="Dry run, do not train the model")
     args = parser.parse_args()
 
@@ -44,7 +46,9 @@ if __name__ == "__main__":
     # Instantiate the model
     input_size = X_train.shape[1]
     if args.threshold:
-        model = BinaryClassifierWithThreshold(input_size, **cfg_model, learning_rate=cfg_training["learning_rate"], weight_decay=cfg_training.get("weight_decay", 0), score_threshold=cfg_training.get("score_threshold", 0.1))
+        model = BinaryClassifierWithThreshold(input_size, **cfg_model, learning_rate=cfg_training["learning_rate"], weight_decay=cfg_training.get("weight_decay", 0), score_threshold=cfg_training.get("score_threshold", 0.02))
+    elif args.clamp:
+        model = BinaryClassifierClampLoss(input_size, **cfg_model, learning_rate=cfg_training["learning_rate"], weight_decay=cfg_training.get("weight_decay", 0), score_threshold=cfg_training.get("score_threshold", 0.1))
     else:
         model = BinaryClassifier(input_size, **cfg_model, learning_rate=cfg_training["learning_rate"], weight_decay=cfg_training.get("weight_decay", 0))
 
