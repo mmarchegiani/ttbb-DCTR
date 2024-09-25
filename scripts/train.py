@@ -37,8 +37,8 @@ if __name__ == "__main__":
 
     events_train = ak.from_parquet(cfg_training["training_file"])
     events_test = ak.from_parquet(cfg_training["test_file"])
-    input_features_train = get_input_features(events_train)
-    input_features_test = get_input_features(events_test)
+    input_features_train = get_input_features(events_train, only=cfg_training.get("input_features", None))
+    input_features_test = get_input_features(events_test, only=cfg_training.get("input_features", None))
     X_train, Y_train, W_train = get_tensors(input_features_train, events_train.dctr, events_train.event.weight, normalize_inputs=True, normalize_weights=True)
     X_test, Y_test, W_test = get_tensors(input_features_test, events_test.dctr, events_test.event.weight, normalize_inputs=True, normalize_weights=True)
     train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=cfg_training["batch_size"], shuffle=True)
