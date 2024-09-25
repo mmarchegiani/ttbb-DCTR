@@ -1,0 +1,28 @@
+model:
+  hidden_size: 50
+  output_size: 1
+  num_hidden_layers: 1
+
+training:
+  epochs: 2000
+  learning_rate: 0.001
+  batch_size: 8092
+  patience: 500
+  training_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/full_Run2_26features_v2/tthbb0p40_ttlf0p60/dataset_dctr_26features_tthbb0p40_ttlf0p60_train_3182044.parquet
+  test_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/full_Run2_26features_v2/tthbb0p40_ttlf0p60/dataset_dctr_26features_tthbb0p40_ttlf0p60_test_795788.parquet
+  input_features:
+    - njet
+    - nbjet
+    - ht
+    - ht_b
+    - ht_light
+    - drbb_min
+    - mbb_closest
+    - bjet_pt_3
+
+jobs:
+  path: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR
+  model: binary_classifier_dctr_with_threshold
+  job_flavour: testmatch
+  ngpu: 1
+  ncpu: 3
