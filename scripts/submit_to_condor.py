@@ -50,7 +50,7 @@ sub = htcondor.Submit()
 if interactive:
     sub['InteractiveJob'] = True
 
-if model in ["binary_classifier_dctr", "binary_classifier_dctr_with_threshold"]:
+if model in ["binary_classifier_dctr", "binary_classifier_dctr_with_threshold", "binary_classifier_dctr_clamp_loss"]:
     sub['Executable'] = f"{basedir}/jobs/{model}.sh"
     sub['arguments'] = f"{args.cfg} {args.log_dir}"
     sub['Output'] = f"{basedir}/jobs/output/{model}-$(ClusterId).$(ProcId).out"
