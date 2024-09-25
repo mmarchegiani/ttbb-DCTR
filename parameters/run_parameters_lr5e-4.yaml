@@ -7,7 +7,7 @@ training:
   epochs: 2000
   learning_rate: 0.0005
   batch_size: 8092
-  patience: 10
+  patience: 500
   training_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/full_Run2_26features_v2/tthbb0p40_ttlf0p60/dataset_dctr_26features_tthbb0p40_ttlf0p60_train_3182044.parquet
   test_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/full_Run2_26features_v2/tthbb0p40_ttlf0p60/dataset_dctr_26features_tthbb0p40_ttlf0p60_test_795788.parquet
 

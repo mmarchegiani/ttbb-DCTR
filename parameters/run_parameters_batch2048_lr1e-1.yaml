@@ -62,7 +62,7 @@ training:
   epochs: 2000
   learning_rate: 0.1
   batch_size: 2048
-  patience: 10
+  patience: 500
 
 jobs:
   path: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR
