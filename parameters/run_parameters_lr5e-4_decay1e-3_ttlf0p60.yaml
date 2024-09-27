@@ -14,7 +14,7 @@ training:
 
 jobs:
   path: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR
-  model: binary_classifier_dctr_with_threshold
+  model: binary_classifier_dctr
   job_flavour: testmatch
   ngpu: 1
   ncpu: 3
