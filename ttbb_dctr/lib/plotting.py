@@ -189,25 +189,39 @@ def plot_dctr_weight(events, mask_train, plot_dir):
         #plt.savefig(filename, dpi=300)
         #plt.close(fig)
 
+def get_central_interval(x, loc=1.0,  perc=0.68):
+    """Get the interval of data around a specified value."""
+    x_below = x[x < loc]
+    x_above = x[x >= loc]
+    x_lo = np.quantile(x_below, 1 - perc / 2)
+    x_hi = np.quantile(x_above, perc / 2)
+    return x_lo, x_hi
+
 def plot_closure_test(events, mask_data, mask_ttbb, plot_dir, only_var=None, density=False):
     input_features = get_input_features(events)
     weight_ttbb = events.dctr_weight
     weights = events.event.weight
-    weights_original = events.event.weight_original
     assert type(input_features) == dict, "Input features should be a dictionary."
     for varname, x in input_features.items():
         if only_var is not None and varname != only_var: continue
         fig, (ax, rax) = plt.subplots(2,1,figsize=[8,8], gridspec_kw={"height_ratios" : [3,1]}, sharex=True)
         x = np.array(x)
         w = np.array(weights)
-        w_original = np.array(weights_original)
         h = ax.hist(x[mask_data], weights=w[mask_data], bins=bins[varname], range=ranges[varname], histtype="step", label="data - minor bkg", color="black", linewidth=3, density=density)
-        h_ttbb = ax.hist(x[mask_ttbb], weights=w_original[mask_ttbb], bins=bins[varname], range=ranges[varname], color=CMAP_6[0], histtype="step", label="ttbb", linewidth=2, density=density)
+        try:
+            weights_original = events.event.weight_original
+            w_original = np.array(weights_original)
+            h_ttbb = ax.hist(x[mask_ttbb], weights=w_original[mask_ttbb], bins=bins[varname], range=ranges[varname], color=CMAP_6[0], histtype="step", label="ttbb", linewidth=2, density=density)
+        except:
+            print("WARNING: the field 'event.weight_original' is not available. Skip plotting the original ttbb distribution.")
         h_ttbb_rwg_1d = ax.hist(x[mask_ttbb], weights=w[mask_ttbb], bins=bins[varname], range=ranges[varname], color=CMAP_6[1], histtype="step", label="ttbb (1D rwg.)", linewidth=2, density=density)
         h_ttbb_rwg_dctr = ax.hist(x[mask_ttbb], weights=w[mask_ttbb]*weight_ttbb[mask_ttbb], bins=bins[varname], range=ranges[varname], color=CMAP_6[2], histtype="step", label="ttbb (DNN rwg.)", linewidth=2, density=density)
 
         rax.hlines(1.0, *ranges[varname], colors='gray', linestyles='dashed')
-        rax.stairs(h_ttbb[0] / h[0], h[1], color=CMAP_6[0], linewidth=2)
+        try:
+            rax.stairs(h_ttbb[0] / h[0], h[1], color=CMAP_6[0], linewidth=2)
+        except:
+            pass
         rax.stairs(h_ttbb_rwg_1d[0] / h[0], h[1], color=CMAP_6[1], linewidth=2)
         rax.stairs(h_ttbb_rwg_dctr[0] / h[0], h[1], color=CMAP_6[2], linewidth=2)
 
@@ -226,15 +240,13 @@ def plot_closure_test(events, mask_data, mask_ttbb, plot_dir, only_var=None, den
         plt.close(fig)
 
 
-def plot_closure_test_split_by_weight(events, mask_data, mask_ttbb, weight_cuts, plot_dir, only_var=None, density=False):
+def plot_closure_test_split_by_weight(events, mask_data, mask_ttbb, weight_cuts, plot_dir, only_var=None, density=False, suffix=None):
     # Assert that weight_cuts is an iterable
     input_features = get_input_features(events)
     weight_ttbb = events.dctr_weight
     weights = events.event.weight
-    weights_original = events.event.weight_original
     assert hasattr(weight_cuts, "__iter__"), "weight_cuts should be an iterable."
     assert len(weight_cuts[0]) == 2, "weight_cuts should contain tuples of two elements: `(w_lo, w_hi)`."
-    weight_cuts = [(0.0,0.8), (0.8,1.2), (1.2,3)]
     ncuts = len(weight_cuts)
     height = 8
 
@@ -248,25 +260,37 @@ def plot_closure_test_split_by_weight(events, mask_data, mask_ttbb, weight_cuts,
             rax = axes[ncuts+j]
             x = np.array(x)
             w = np.array(weights)
-            w_original = np.array(weights_original)
             h = ax.hist(x[mask_data & mask_weight], weights=w[mask_data & mask_weight], bins=bins[varname], range=ranges[varname], histtype="step", label="data - minor bkg", color="black", linewidth=3, density=density)
-            h_ttbb = ax.hist(x[mask_ttbb & mask_weight], weights=w_original[mask_ttbb & mask_weight], bins=bins[varname], range=ranges[varname], color=CMAP_6[0], histtype="step", label="ttbb", linewidth=2, density=density)
+            try:
+                weights_original = events.event.weight_original
+                w_original = np.array(weights_original)
+                h_ttbb = ax.hist(x[mask_ttbb & mask_weight], weights=w_original[mask_ttbb & mask_weight], bins=bins[varname], range=ranges[varname], color=CMAP_6[0], histtype="step", label="ttbb", linewidth=2, density=density)
+            except:
+                print("WARNING: the field 'event.weight_original' is not available. Skip plotting the original ttbb distribution.")
             h_ttbb_rwg_1d = ax.hist(x[mask_ttbb & mask_weight], weights=w[mask_ttbb & mask_weight], bins=bins[varname], range=ranges[varname], color=CMAP_6[1], histtype="step", label="ttbb (1D rwg.)", linewidth=2, density=density)
             h_ttbb_rwg_dctr = ax.hist(x[mask_ttbb & mask_weight], weights=w[mask_ttbb & mask_weight]*weight_ttbb[mask_ttbb & mask_weight], bins=bins[varname], range=ranges[varname], color=CMAP_6[2], histtype="step", label="ttbb (DNN rwg.)", linewidth=2, density=density)
             rax.hlines(1.0, *ranges[varname], colors='gray', linestyles='dashed')
-            rax.stairs(h_ttbb[0] / h[0], h[1], color=CMAP_6[0], linewidth=2)
+            try:
+                rax.stairs(h_ttbb[0] / h[0], h[1], color=CMAP_6[0], linewidth=2)
+            except:
+                pass
             rax.stairs(h_ttbb_rwg_1d[0] / h[0], h[1], color=CMAP_6[1], linewidth=2)
             rax.stairs(h_ttbb_rwg_dctr[0] / h[0], h[1], color=CMAP_6[2], linewidth=2)
             ax.set_xlim(*ranges[varname])
             ax.set_ylim(0, 1.4*max(max(h[0]), max(h_ttbb_rwg_dctr[0]), max(h_ttbb_rwg_1d[0])))
-            ax.set_title(f"$\omega\in$[{weight_lo},{weight_hi})")
+            ax.set_title(f"$\omega\in$[{round(weight_lo, 2)},{round(weight_hi, 2)})")
             ax.set_ylabel("Counts")
             rax.set_xlabel(varname)
             rax.set_ylabel("ttbb / (Data - minor bkg)", fontsize=10)
             rax.set_ylim(0,2)
             ax.legend()
             #rax.legend()
-        filename = os.path.join(plot_dir, f"{varname}_reweighed_split_by_weight.png")
+        if suffix is not None:
+            if not os.path.exists(os.path.join(plot_dir, suffix)):
+                os.makedirs(os.path.join(plot_dir, suffix), exist_ok=True)
+            filename = os.path.join(plot_dir, suffix, f"{varname}_reweighed_split_by_weight.png")
+        else:
+            filename = os.path.join(plot_dir, f"{varname}_reweighed_split_by_weight.png")
         print(f"Saving {filename}")
         plt.savefig(filename, dpi=300)
         plt.close(fig)
