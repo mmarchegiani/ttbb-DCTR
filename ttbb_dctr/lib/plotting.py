@@ -193,8 +193,8 @@ def get_central_interval(x, loc=1.0,  perc=0.68):
     """Get the interval of data around a specified value."""
     x_below = x[x < loc]
     x_above = x[x >= loc]
-    x_lo = np.quantile(x_below, 1 - perc / 2)
-    x_hi = np.quantile(x_above, perc / 2)
+    x_lo = np.quantile(x_below, 1 - perc)
+    x_hi = np.quantile(x_above, perc)
     return x_lo, x_hi
 
 def plot_closure_test(events, mask_data, mask_ttbb, plot_dir, only_var=None, density=False):

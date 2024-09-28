@@ -119,14 +119,17 @@ if __name__ == "__main__":
     plot_dctr_weight(events, mask_train, os.path.join(plot_dir, "classifier"))
     print("Plotting closure test")
     weight_cuts_default = [(0, 0.8), (0.8, 1.2), (1.2, 3)]
-    perc = 0.40
+    perc = 0.33
     w_lo, w_hi = get_central_interval(weight_ttbb[mask_ttbb], perc=perc)
     weight_cuts_symmetric = [(0, w_lo), (w_lo, w_hi), (w_hi, 3)]
+    w_lo, w_hi = np.quantile(weight_ttbb[mask_ttbb].to_numpy(), [1./3, 2./3])
+    weight_cuts_quantile0p33 = [(0, w_lo), (w_lo, w_hi), (w_hi, 3)]
     weight_cuts_tails = [(0, 0.1), (0.1, 1.9), (1.9, 3)]
     weight_dict = {
         "0p8To1p2": weight_cuts_default,
+        "0p1To1p9": weight_cuts_tails,
         "symmetric": weight_cuts_symmetric,
-        "0p1To1p9": weight_cuts_tails
+        "quantile0p33": weight_cuts_quantile0p33,
     }
     d = {"weight_cuts": weight_dict, "central_percentile": perc}
     filename_json = os.path.join(plot_dir, "closure_test", "weight_cuts.json")
