@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import pytorch_lightning as pl
 
 class BinaryClassifier(pl.LightningModule):
@@ -60,3 +61,14 @@ class BinaryClassifier(pl.LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.SGD(self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay)
+
+
+# Wrapper class with sigmoid function applied already in the forward pass
+class WrappedModel(pl.LightningModule):
+    def __init__(self, model):
+        super(WrappedModel, self).__init__()
+        self.model = model
+        self.example_input_array = torch.rand(16, model.hparams.input_size)
+
+    def forward(self, x):
+        return F.sigmoid(self.model(x))

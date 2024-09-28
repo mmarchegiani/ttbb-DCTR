@@ -21,7 +21,8 @@ setup(
         'scikit-learn',
         'htcondor',
         'pytorch_lightning',
-        'seaborn'
+        'seaborn',
+        'onnx'
     ],
     classifiers=[
         'Development Status :: 1 - Planning',
