@@ -33,3 +33,4 @@ if __name__ == "__main__":
         dataset.compute_njet_weights()
     if not args.dry:
         dataset.save_all(args.output)
+        dataset.save_reweighting_map(args.output.replace(".parquet", "_reweighting_map.yaml"))

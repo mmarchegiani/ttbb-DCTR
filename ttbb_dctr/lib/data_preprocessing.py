@@ -28,19 +28,26 @@ def get_cr_mask(events, params):
     )
     return mask
 
-def get_njet_reweighting(events, mask_num, mask_den):
+def get_njet_reweighting_map(events, mask_num, mask_den):
     reweighting_map_njet = {}
+    njet = ak.num(events.JetGood)
+    w = events.event.weight
+    for nj in range(4,7):
+        mask_nj = (njet == nj)
+        reweighting_map_njet[nj] = sum(w[mask_num & mask_nj]) / sum(w[mask_den & mask_nj])
+    for nj in range(7,21):
+        reweighting_map_njet[nj] = sum(w[mask_num & (njet >= 7)]) / sum(w[mask_den & (njet >= 7)])
+    return reweighting_map_njet
+
+def get_njet_reweighting(events, reweighting_map_njet, mask):
     njet = ak.num(events.JetGood)
     w = events.event.weight
     w_nj = np.ones(len(events))
     for nj in range(4,7):
         mask_nj = (njet == nj)
-        reweighting_map_njet[nj] = sum(w[mask_num & mask_nj]) / sum(w[mask_den & mask_nj])
-        w_nj = np.where(mask_den & mask_nj, reweighting_map_njet[nj], w_nj)
-    reweighting_map_njet[7] = sum(w[mask_num & (njet >= 7)]) / sum(w[mask_den & (njet >= 7)])
+        w_nj = np.where(mask & mask_nj, reweighting_map_njet[nj], w_nj)
     print("1D reweighting map based on the number of jets:")
     print(reweighting_map_njet)
-    w_nj = np.where(mask_den & (njet >= 7), reweighting_map_njet[7], w_nj)
     return w_nj
 
 def get_input_features(events, mask=None, only=None):
