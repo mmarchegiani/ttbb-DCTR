@@ -9,8 +9,8 @@ training:
   weight_decay: 0.001
   batch_size: 8092
   patience: 500
-  training_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/full_Run2_26features/ttlf0p60/dataset_dctr_26features_ttlf0p60_train_4841614.parquet
-  test_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/full_Run2_26features/ttlf0p60/dataset_dctr_26features_ttlf0p60_test_1211028.parquet
+  training_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/full_Run2_26features_v3/ttlf0p60/dataset_dctr_26features_ttlf0p60_train_4842305.parquet
+  test_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/full_Run2_26features_v3/ttlf0p60/dataset_dctr_26features_ttlf0p60_test_1210337.parquet
 
 jobs:
   path: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR
