@@ -46,6 +46,8 @@ def get_njet_reweighting(events, reweighting_map_njet, mask):
     for nj in range(4,7):
         mask_nj = (njet == nj)
         w_nj = np.where(mask & mask_nj, reweighting_map_njet[nj], w_nj)
+    for nj in range(7,21):
+        w_nj = np.where(mask & (njet >= 7), reweighting_map_njet[nj], w_nj)
     print("1D reweighting map based on the number of jets:")
     print(reweighting_map_njet)
     return w_nj
