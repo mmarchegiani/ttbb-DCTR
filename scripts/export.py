@@ -29,6 +29,7 @@ if __name__ == "__main__":
     parser.add_argument('log_directory', type=str, help="Pytorch Lightning Log directory containing the checkpoint and hparams.yaml file.")
     parser.add_argument('--output', type=str, default=None, help="Output model file path", required=False)
     parser.add_argument('--epoch', type=int, default=None, help="Select the epoch to load the model from", required=False)
+    parser.add_argument('--device', type=str, default=None, choices=["cpu", "cuda"], help="Device to use for model export", required=False)
     args = parser.parse_args()
 
     if args.output is None:
@@ -38,13 +39,17 @@ if __name__ == "__main__":
     if args.epoch is not None:
         output_path = output_path.replace(".onnx", f"_epoch{args.epoch}.onnx")
 
-    device = get_device()
+    if args.device is not None:
+        device = args.device
+    else:
+        device = get_device()
 
     # Compute DCTR score and weight
     model = load_model(args.log_directory, BinaryClassifier, epoch=args.epoch)
 
     # Export model to ONNX
     print("Exporting model to ONNX...")
+    model.eval()
     model.to(device).to_onnx(output_path,
         export_params=True,
         input_names=["input"], output_names=["output"],
