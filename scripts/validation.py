@@ -17,7 +17,7 @@ import torch.nn.functional as F
 from tthbb_spanet import DCTRDataset
 from ttbb_dctr.models.binary_classifier import BinaryClassifier
 from ttbb_dctr.lib.data_preprocessing import get_device, get_datasets_list, get_tensors, get_input_features
-from ttbb_dctr.lib.plotting import plot_correlation, plot_correlation_matrix, plot_classifier_score, plot_dctr_weight, plot_closure_test, plot_closure_test_split_by_weight, get_central_interval
+from ttbb_dctr.lib.plotting import plot_correlation, plot_correlation_matrix, plot_classifier_score, plot_dctr_weight, plot_closure_test, plot_closure_test_split_by_weight, get_central_interval, get_quantiles_by_njet
 
 def get_epoch(s):
     return int(s.split("-")[0].split("=")[-1])
@@ -132,10 +132,13 @@ if __name__ == "__main__":
         "quantile0p33": weight_cuts_quantile0p33,
     }
     d = {"weight_cuts": weight_dict, "central_percentile": perc}
-    filename_json = os.path.join(plot_dir, "closure_test", "weight_cuts.json")
-    print(f"Writing weight cuts to {filename_json}")
-    with open(filename_json, "w") as f:
-        json.dump(d, f)
+    weight_cuts_by_njet = get_quantiles_by_njet(events, mask_ttbb, q=[1./3, 2./3])
+    filename_inclusive = os.path.join(plot_dir, "closure_test", "weight_cuts.json")
+    filename_by_njet = os.path.join(plot_dir, "closure_test", "weight_cuts_by_njet.json")
+    for filename_json, _dict in zip([filename_inclusive, filename_by_njet], [d, weight_cuts_by_njet]):
+        print(f"Writing weight cuts to {filename_json}")
+        with open(filename_json, "w") as f:
+            json.dump(_dict, f)
     for weight_name, weight_cuts in weight_dict.items():
         for dataset_type, mask_dataset, _events in zip(["train", "test"], [mask_train, mask_test], [events_train, events_test]):
             plot_dir_dataset = os.path.join(plot_dir, "closure_test", dataset_type)

@@ -197,6 +197,22 @@ def get_central_interval(x, loc=1.0,  perc=0.68):
     x_hi = np.quantile(x_above, perc)
     return x_lo, x_hi
 
+def get_quantiles_by_njet(events, mask, q=[1./3, 2./3]):
+    njet = ak.num(events.JetGood)
+    w_dctr = events.dctr_weight
+    weight_cuts_dict = {}
+    for nj in range(4,7):
+        mask_nj = (njet == nj)
+        w_lo, w_hi = np.quantile(w_dctr[mask & mask_nj].to_numpy(), q)
+        weight_cuts_dict[f"njet={nj}"] = [(0, w_lo), (w_lo, w_hi), (w_hi, 3)]
+
+    w_lo, w_hi = np.quantile(w_dctr[mask & (njet >= 6)].to_numpy(), q)
+    weight_cuts_dict["njet>=6"] = [(0, w_lo), (w_lo, w_hi), (w_hi, 3)]
+    w_lo, w_hi = np.quantile(w_dctr[mask & (njet >= 7)].to_numpy(), q)
+    weight_cuts_dict["njet>=7"] = [(0, w_lo), (w_lo, w_hi), (w_hi, 3)]
+
+    return weight_cuts_dict
+
 def plot_closure_test(events, mask_data, mask_ttbb, plot_dir, only_var=None, density=False):
     input_features = get_input_features(events)
     weight_ttbb = events.dctr_weight
