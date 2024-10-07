@@ -70,9 +70,9 @@ if __name__ == "__main__":
     events_train = dataset_train.df
     events_test = dataset_test.df
     events = ak.concatenate((events_train, events_test))
-    input_features_train = get_input_features(events_train)
-    input_features_test = get_input_features(events_test)
-    input_features = get_input_features(events)
+    input_features_train = get_input_features(events_train, only=cfg_training.get("input_features", None))
+    input_features_test = get_input_features(events_test, only=cfg_training.get("input_features", None))
+    input_features = get_input_features(events, only=cfg_training.get("input_features", None))
     X_train, Y_train, W_train = get_tensors(input_features_train, events_train.dctr, events_train.event.weight, normalize_inputs=True, normalize_weights=True)
     X_test, Y_test, W_test = get_tensors(input_features_test, events_test.dctr, events_test.event.weight, normalize_inputs=True, normalize_weights=True)
     X_full = torch.concatenate((X_train, X_test))
