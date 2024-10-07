@@ -20,9 +20,11 @@ def get_datasets_list(cfg):
     return datasets
 
 def get_cr_mask(events, params):
+    tthbb_transformed_min = params.get("tthbb_transformed_min", 0.0)
     tthbb_transformed_max = params.get("tthbb_transformed_max", 1.1)
     ttlf_max = params.get("ttlf_max", 1.1)
     mask = (
+        (events.spanet_output.tthbb_transformed >= tthbb_transformed_min) &
         (events.spanet_output.tthbb_transformed < tthbb_transformed_max) &
         (events.spanet_output.ttlf < ttlf_max)
     )
