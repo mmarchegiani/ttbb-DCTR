@@ -213,6 +213,11 @@ def get_quantiles_by_njet(events, mask, q=[1./3, 2./3]):
 
     return weight_cuts_dict
 
+def get_bin_centers(bins):
+    binwidth = np.ediff1d(bins)
+    bin_centers = bins[:-1] + 0.5*binwidth
+    return bin_centers
+
 def plot_closure_test(events, mask_data, mask_ttbb, plot_dir, only_var=None, density=False):
     input_features = get_input_features(events)
     weight_ttbb = events.dctr_weight
@@ -224,6 +229,11 @@ def plot_closure_test(events, mask_data, mask_ttbb, plot_dir, only_var=None, den
         x = np.array(x)
         w = np.array(weights)
         h = ax.hist(x[mask_data], weights=w[mask_data], bins=bins[varname], range=ranges[varname], histtype="step", label="data - minor bkg", color="black", linewidth=3, density=density)
+        sumw2 = np.histogram(x[mask_data], bins=bins[varname], range=ranges[varname], weights=w[mask_data]**2)[0]
+        yerr = np.sqrt(sumw2)
+        # Plot the statistical uncertainty on top of the histogram with errorbars
+        bin_centers = get_bin_centers(h[1])
+        ax.errorbar(bin_centers, h[0], yerr=yerr, fmt='none', color='black', capsize=5, capthick=2)
         try:
             weights_original = events.event.weight_original
             w_original = np.array(weights_original)
@@ -234,12 +244,24 @@ def plot_closure_test(events, mask_data, mask_ttbb, plot_dir, only_var=None, den
         h_ttbb_rwg_dctr = ax.hist(x[mask_ttbb], weights=w[mask_ttbb]*weight_ttbb[mask_ttbb], bins=bins[varname], range=ranges[varname], color=CMAP_6[2], histtype="step", label="ttbb (DNN rwg.)", linewidth=2, density=density)
 
         rax.hlines(1.0, *ranges[varname], colors='gray', linestyles='dashed')
+        binwidth = np.ediff1d(h[1])
         try:
-            rax.stairs(h_ttbb[0] / h[0], h[1], color=CMAP_6[0], linewidth=2)
+            #rax.stairs(h_ttbb[0] / h[0], h[1], color=CMAP_6[0], linewidth=2)
+            rax.errorbar(bin_centers, h_ttbb[0] / h[0], xerr=0.5*binwidth, yerr=0, fmt='none', color=CMAP_6[0], linewidth=2)
         except:
             pass
-        rax.stairs(h_ttbb_rwg_1d[0] / h[0], h[1], color=CMAP_6[1], linewidth=2)
-        rax.stairs(h_ttbb_rwg_dctr[0] / h[0], h[1], color=CMAP_6[2], linewidth=2)
+        #rax.stairs(h_ttbb_rwg_1d[0] / h[0], h[1], color=CMAP_6[1], linewidth=2)
+        #rax.stairs(h_ttbb_rwg_dctr[0] / h[0], h[1], color=CMAP_6[2], linewidth=2)
+        binwidth = np.ediff1d(h[1])
+        rax.errorbar(bin_centers, h_ttbb_rwg_1d[0] / h[0], xerr=0.5*binwidth, yerr=0, fmt='none', color=CMAP_6[1], linewidth=2)
+        rax.errorbar(bin_centers, h_ttbb_rwg_dctr[0] / h[0], xerr=0.5*binwidth, yerr=0, fmt='none', color=CMAP_6[2], linewidth=2)
+
+        # Plot errorband in ratio plot for data - minor bkg, centered in 1 with a width of 1 sigma with respect to the statistical uncertainty
+        unc_down = 1 - yerr / h[0]
+        unc_up = 1 + yerr / h[0]
+        unc_band = np.array([unc_down, unc_up])
+        rax.fill_between(h[1], np.r_[unc_band[0], unc_band[0][-1]], np.r_[unc_band[1], unc_band[1][-1]], label="stat. unc.",
+                            color=[0.,0.,0.,0.4], facecolor=[0.,0.,0.,0.], hatch="////", linewidth=0, step="post")
 
         ax.set_xlim(*ranges[varname])
         ax.set_ylim(0, 1.4*max(h[0]))
@@ -277,6 +299,11 @@ def plot_closure_test_split_by_weight(events, mask_data, mask_ttbb, weight_cuts,
             x = np.array(x)
             w = np.array(weights)
             h = ax.hist(x[mask_data & mask_weight], weights=w[mask_data & mask_weight], bins=bins[varname], range=ranges[varname], histtype="step", label="data - minor bkg", color="black", linewidth=3, density=density)
+            sumw2 = np.histogram(x[mask_data & mask_weight], bins=bins[varname], range=ranges[varname], weights=w[mask_data & mask_weight]**2)[0]
+            yerr = np.sqrt(sumw2)
+            # Plot the statistical uncertainty on top of the histogram with errorbars
+            bin_centers = get_bin_centers(h[1])
+            ax.errorbar(bin_centers, h[0], yerr=yerr, fmt='none', color='black', capsize=5, capthick=2)
             try:
                 weights_original = events.event.weight_original
                 w_original = np.array(weights_original)
@@ -286,12 +313,23 @@ def plot_closure_test_split_by_weight(events, mask_data, mask_ttbb, weight_cuts,
             h_ttbb_rwg_1d = ax.hist(x[mask_ttbb & mask_weight], weights=w[mask_ttbb & mask_weight], bins=bins[varname], range=ranges[varname], color=CMAP_6[1], histtype="step", label="ttbb (1D rwg.)", linewidth=2, density=density)
             h_ttbb_rwg_dctr = ax.hist(x[mask_ttbb & mask_weight], weights=w[mask_ttbb & mask_weight]*weight_ttbb[mask_ttbb & mask_weight], bins=bins[varname], range=ranges[varname], color=CMAP_6[2], histtype="step", label="ttbb (DNN rwg.)", linewidth=2, density=density)
             rax.hlines(1.0, *ranges[varname], colors='gray', linestyles='dashed')
+            binwidth = np.ediff1d(h[1])
             try:
-                rax.stairs(h_ttbb[0] / h[0], h[1], color=CMAP_6[0], linewidth=2)
+                #rax.stairs(h_ttbb[0] / h[0], h[1], color=CMAP_6[0], linewidth=2)
+                rax.errorbar(bin_centers, h_ttbb[0] / h[0], xerr=0.5*binwidth, yerr=0, fmt='none', color=CMAP_6[0], linewidth=2)
             except:
                 pass
-            rax.stairs(h_ttbb_rwg_1d[0] / h[0], h[1], color=CMAP_6[1], linewidth=2)
-            rax.stairs(h_ttbb_rwg_dctr[0] / h[0], h[1], color=CMAP_6[2], linewidth=2)
+            #rax.stairs(h_ttbb_rwg_1d[0] / h[0], h[1], color=CMAP_6[1], linewidth=2)
+            #rax.stairs(h_ttbb_rwg_dctr[0] / h[0], h[1], color=CMAP_6[2], linewidth=2)
+            rax.errorbar(bin_centers, h_ttbb_rwg_1d[0] / h[0], xerr=0.5*binwidth, yerr=0, fmt='none', color=CMAP_6[1], linewidth=2)
+            rax.errorbar(bin_centers, h_ttbb_rwg_dctr[0] / h[0], xerr=0.5*binwidth, yerr=0, fmt='none', color=CMAP_6[2], linewidth=2)
+            # Plot errorband in ratio plot for data - minor bkg, centered in 1 with a width of 1 sigma with respect to the statistical uncertainty
+            unc_down = 1 - yerr / h[0]
+            unc_up = 1 + yerr / h[0]
+            unc_band = np.array([unc_down, unc_up])
+            rax.fill_between(h[1], np.r_[unc_band[0], unc_band[0][-1]], np.r_[unc_band[1], unc_band[1][-1]], label="stat. unc.",
+                             color=[0.,0.,0.,0.4], facecolor=[0.,0.,0.,0.], hatch="////", linewidth=0, step="post")
+            #rax.fill_between(h[1][:-1], 1 - yerr / h[0], 1 + yerr / h[0], color='gray', label="stat. unc.")
             ax.set_xlim(*ranges[varname])
             ax.set_ylim(0, 1.4*max(max(h[0]), max(h_ttbb_rwg_dctr[0]), max(h_ttbb_rwg_1d[0])))
             ax.set_title(f"$\omega\in$[{round(weight_lo, 2)},{round(weight_hi, 2)})")
