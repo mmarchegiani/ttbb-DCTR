@@ -69,15 +69,14 @@ if __name__ == "__main__":
     dataset_test = DCTRDataset(cfg_training["test_file"], shuffle=False, reweigh=False, label=False)
     events_train = dataset_train.df
     events_test = dataset_test.df
-    events = ak.concatenate((events_train, events_test))
-    input_features_train = get_input_features(events_train, only=cfg_training.get("input_features", None))
-    input_features_test = get_input_features(events_test, only=cfg_training.get("input_features", None))
+    if len(events_train) == 0:
+        events = events_test
+    elif len(events_test) == 0:
+        events = events_train
+    else:
+        events = ak.concatenate((events_train, events_test))
     input_features = get_input_features(events, only=cfg_training.get("input_features", None))
-    X_train, Y_train, W_train = get_tensors(input_features_train, events_train.dctr, events_train.event.weight, normalize_inputs=True, normalize_weights=True)
-    X_test, Y_test, W_test = get_tensors(input_features_test, events_test.dctr, events_test.event.weight, normalize_inputs=True, normalize_weights=True)
-    X_full = torch.concatenate((X_train, X_test))
-    Y_full = torch.concatenate((Y_train, Y_test))
-    W_full = torch.concatenate((W_train, W_test))
+    X_full, Y_full, W_full = get_tensors(input_features, events.dctr, events.event.weight, normalize_inputs=True, normalize_weights=True)
 
     # Compute DCTR score and weight
     model = load_model(args.log_directory, epoch=args.epoch)
@@ -91,12 +90,6 @@ if __name__ == "__main__":
     # Add DCTR score and weight branches to the events
     events = ak.with_field(events, score, "dctr_score")
     events = ak.with_field(events, weight_ttbb, "dctr_weight")
-    mask_train = ak.local_index(ak.num(events.JetGood)) < X_train.shape[0]
-    mask_test = ~mask_train
-    events_train = ak.with_field(events[mask_train], score[mask_train], "dctr_score")
-    events_train = ak.with_field(events_train, weight_ttbb[mask_train], "dctr_weight")
-    events_test = ak.with_field(events[mask_test], score[mask_test], "dctr_score")
-    events_test = ak.with_field(events_test, weight_ttbb[mask_test], "dctr_weight")
 
     # Select events in control region, without cut on tthbb
     mask_data = (events.data == 1)
