@@ -69,6 +69,19 @@ preprocessing:
     njet_reweighting:
       file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/dctr_sfcalibrated_inclusive_1d_reweighting/full_Run2_26features_ttlf0p30_with_ttlf_reweighting/dataset_dctr_sfcalibrated_inclusive_1d_with_ttlf_reweighting_reweighting_map.yaml
       key: ttlf0p30
+    ttlf_reweighting:
+      "2016_PreVFP":
+        file: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR/parameters/ttlf_calibration/ttlf_background_correction_2016_PreVFP.json
+        key: ttlf_background_correction
+      "2016_PostVFP":
+        file: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR/parameters/ttlf_calibration/ttlf_background_correction_2016_PostVFP.json
+        key: ttlf_background_correction
+      "2017":
+        file: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR/parameters/ttlf_calibration/ttlf_background_correction_2017.json
+        key: ttlf_background_correction
+      "2018":
+        file: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR/parameters/ttlf_calibration/ttlf_background_correction_2018.json
+        key: ttlf_background_correction
 
 cuts:
   tthbb0p60_ttlf0p30:
