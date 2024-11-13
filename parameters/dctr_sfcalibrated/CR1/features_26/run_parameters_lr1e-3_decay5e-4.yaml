@@ -9,8 +9,8 @@ training:
   weight_decay: 0.0005
   batch_size: 8092
   patience: 500
-  training_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/dctr_sfcalibrated/full_Run2_26features_CR1_ttlf0p30/dataset_dctr_sfcalibrated_tthbb0p60_ttlf0p30_train_2619316.parquet
-  test_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/dctr_sfcalibrated/full_Run2_26features_CR1_ttlf0p30/dataset_dctr_sfcalibrated_tthbb0p60_ttlf0p30_test_654355.parquet
+  training_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/dctr_sfcalibrated/full_Run2_26features_CR1_ttlf0p30_with_ttlf_reweighting/dataset_dctr_sfcalibrated_with_ttlf_reweighting_tthbb0p60_ttlf0p30_train_2617686.parquet
+  test_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/dctr_sfcalibrated/full_Run2_26features_CR1_ttlf0p30_with_ttlf_reweighting/dataset_dctr_sfcalibrated_with_ttlf_reweighting_tthbb0p60_ttlf0p30_test_655985.parquet
 
 jobs:
   path: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR
