@@ -65,18 +65,36 @@ if __name__ == "__main__":
         cfg_training = cfg["training"]
 
     # Load model and compute predictions to extract the DCTR weight
-    dataset_train = DCTRDataset(cfg_training["training_file"], shuffle=False, reweigh=False, label=False)
-    dataset_test = DCTRDataset(cfg_training["test_file"], shuffle=False, reweigh=False, label=False)
-    events_train = dataset_train.df
-    events_test = dataset_test.df
-    if len(events_train) == 0:
+    assert cfg_training.get("training_file", None) is not None or cfg_training.get("test_file", None) is not None, "No training or test file provided"
+    if cfg_training.get("training_file", None) is not None:
+        dataset_train = DCTRDataset(cfg_training["training_file"], shuffle=False, reweigh=False, label=False)
+        events_train = dataset_train.df
+        input_features_train = get_input_features(events_train, only=cfg_training.get("input_features", None))
+        X_train, Y_train, W_train = get_tensors(input_features_train, events_train.dctr, events_train.event.weight, normalize_inputs=True, normalize_weights=True)
+    if cfg_training.get("test_file", None) is not None:
+        dataset_test = DCTRDataset(cfg_training["test_file"], shuffle=False, reweigh=False, label=False)
+        events_test = dataset_test.df
+        input_features_test = get_input_features(events_test, only=cfg_training.get("input_features", None))
+        X_test, Y_test, W_test = get_tensors(input_features_test, events_test.dctr, events_test.event.weight, normalize_inputs=True, normalize_weights=True)
+    if cfg_training.get("training_file", None) is not None and cfg_training.get("test_file", None) is not None:
+        events = ak.concatenate((events_train, events_test))
+    if cfg_training.get("training_file", None) is None:
+        events_train = None
         events = events_test
-    elif len(events_test) == 0:
+        X_full = X_test
+        Y_full = Y_test
+        W_full = W_test
+    elif cfg_training.get("test_file", None) is None:
+        events_test = None
         events = events_train
+        X_full = X_train
+        Y_full = Y_train
+        W_full = W_train
     else:
         events = ak.concatenate((events_train, events_test))
-    input_features = get_input_features(events, only=cfg_training.get("input_features", None))
-    X_full, Y_full, W_full = get_tensors(input_features, events.dctr, events.event.weight, normalize_inputs=True, normalize_weights=True)
+        X_full = torch.concatenate((X_train, X_test))
+        Y_full = torch.concatenate((Y_train, Y_test))
+        W_full = torch.concatenate((W_train, W_test))
 
     # Compute DCTR score and weight
     model = load_model(args.log_directory, epoch=args.epoch)

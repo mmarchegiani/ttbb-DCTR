@@ -66,24 +66,38 @@ if __name__ == "__main__":
         cfg_training = cfg["training"]
 
     # Load model and compute predictions to extract the DCTR weight
-    dataset_train = DCTRDataset(cfg_training["training_file"], shuffle=False, reweigh=False, label=False)
-    dataset_test = DCTRDataset(cfg_training["test_file"], shuffle=False, reweigh=False, label=False)
-    events_train = dataset_train.df
-    events_test = dataset_test.df
-    if len(events_train) == 0:
+    assert cfg_training.get("training_file", None) is not None or cfg_training.get("test_file", None) is not None, "No training or test file provided"
+    if cfg_training.get("training_file", None) is not None:
+        dataset_train = DCTRDataset(cfg_training["training_file"], shuffle=False, reweigh=False, label=False)
+        events_train = dataset_train.df
+        input_features_train = get_input_features(events_train, only=cfg_training.get("input_features", None))
+        X_train, Y_train, W_train = get_tensors(input_features_train, events_train.dctr, events_train.event.weight, normalize_inputs=True, normalize_weights=True)
+    if cfg_training.get("test_file", None) is not None:
+        dataset_test = DCTRDataset(cfg_training["test_file"], shuffle=False, reweigh=False, label=False)
+        events_test = dataset_test.df
+        input_features_test = get_input_features(events_test, only=cfg_training.get("input_features", None))
+        X_test, Y_test, W_test = get_tensors(input_features_test, events_test.dctr, events_test.event.weight, normalize_inputs=True, normalize_weights=True)
+    if cfg_training.get("training_file", None) is not None and cfg_training.get("test_file", None) is not None:
+        events = ak.concatenate((events_train, events_test))
+    if cfg_training.get("training_file", None) is None:
+        events_train = None
         events = events_test
-    elif len(events_test) == 0:
+        X_full = X_test
+        Y_full = Y_test
+        W_full = W_test
+    elif cfg_training.get("test_file", None) is None:
+        events_test = None
         events = events_train
+        X_full = X_train
+        Y_full = Y_train
+        W_full = W_train
     else:
         events = ak.concatenate((events_train, events_test))
-    input_features_train = get_input_features(events_train, only=cfg_training.get("input_features", None))
-    input_features_test = get_input_features(events_test, only=cfg_training.get("input_features", None))
+        X_full = torch.concatenate((X_train, X_test))
+        Y_full = torch.concatenate((Y_train, Y_test))
+        W_full = torch.concatenate((W_train, W_test))
+
     input_features = get_input_features(events, only=cfg_training.get("input_features", None))
-    X_train, Y_train, W_train = get_tensors(input_features_train, events_train.dctr, events_train.event.weight, normalize_inputs=True, normalize_weights=True)
-    X_test, Y_test, W_test = get_tensors(input_features_test, events_test.dctr, events_test.event.weight, normalize_inputs=True, normalize_weights=True)
-    X_full = torch.concatenate((X_train, X_test))
-    Y_full = torch.concatenate((Y_train, Y_test))
-    W_full = torch.concatenate((W_train, W_test))
 
     # Compute DCTR score and weight
     model = load_model(args.log_directory, epoch=args.epoch)
@@ -97,7 +111,10 @@ if __name__ == "__main__":
     # Add DCTR score and weight branches to the events
     events = ak.with_field(events, score, "dctr_score")
     events = ak.with_field(events, weight_ttbb, "dctr_weight")
-    mask_train = ak.local_index(ak.num(events.JetGood)) < X_train.shape[0]
+    if events_train is not None:
+        mask_train = ak.local_index(ak.num(events.JetGood)) < X_train.shape[0]
+    else:
+        mask_train = ak.zeros_like(ak.num(events.JetGood), dtype=bool)
     mask_test = ~mask_train
     events_train = ak.with_field(events[mask_train], score[mask_train], "dctr_score")
     events_train = ak.with_field(events_train, weight_ttbb[mask_train], "dctr_weight")
@@ -146,6 +163,10 @@ if __name__ == "__main__":
             json.dump(_dict, f)
     for weight_name, weight_cuts in weight_dict.items():
         for dataset_type, mask_dataset, _events in zip(["train", "test"], [mask_train, mask_test], [events_train, events_test]):
+            if _events is None:
+                continue
+            elif len(_events) == 0:
+                continue
             plot_dir_dataset = os.path.join(plot_dir, "closure_test", dataset_type)
             plot_dir_dataset_inclusive = os.path.join(plot_dir_dataset, "inclusive")
             plot_dir_dataset_split_by_weight = os.path.join(plot_dir_dataset, "split_by_weight")
