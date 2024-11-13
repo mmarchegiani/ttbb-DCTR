@@ -1,0 +1,29 @@
+model:
+  hidden_size: 50
+  output_size: 1
+  num_hidden_layers: 1
+
+training:
+  epochs: 3000
+  learning_rate: 0.001
+  weight_decay: 0.001
+  batch_size: 8092
+  patience: 500
+  training_file: null
+  test_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/dctr_sfcalibrated/full_Run2_26features_CR1_ttlf0p30/dataset_dctr_sfcalibrated_ttlf0p30_full_5497900.parquet
+  input_features:
+    - njet
+    - nbjet
+    - ht
+    - ht_b
+    - ht_light
+    - drbb_min
+    - mbb_closest
+    - bjet_pt_3
+
+jobs:
+  path: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR
+  model: binary_classifier_dctr
+  job_flavour: testmatch
+  ngpu: 1
+  ncpu: 3
