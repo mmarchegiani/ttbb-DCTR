@@ -1,0 +1,10 @@
+jobs/*
+mmarcheg.cc
+notebooks/
+test_*
+ttbb_dctr.egg-info
+ttbb_dctr/__pycache__
+ttbb_dctr/lib/__pycache__
+ttbb_dctr/models/__pycache__
+ttbb_dctr/utils/__pycache__
+
