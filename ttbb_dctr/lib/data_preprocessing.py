@@ -4,6 +4,7 @@ import awkward as ak
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import StandardScaler
+import correctionlib
 
 from ttbb_dctr.utils.utils import get_device
 
@@ -41,10 +42,12 @@ def get_njet_reweighting_map(events, mask_num, mask_den):
         reweighting_map_njet[nj] = sum(w[mask_num & (njet >= 7)]) / sum(w[mask_den & (njet >= 7)])
     return reweighting_map_njet
 
-def get_njet_reweighting(events, reweighting_map_njet, mask):
+def get_njet_reweighting(events, reweighting_map_njet, mask=None):
     njet = ak.num(events.JetGood)
     w = events.event.weight
     w_nj = np.ones(len(events))
+    if mask is None:
+        mask = np.ones(len(events), dtype=bool)
     for nj in range(4,7):
         mask_nj = (njet == nj)
         w_nj = np.where(mask & mask_nj, reweighting_map_njet[nj], w_nj)
@@ -53,6 +56,25 @@ def get_njet_reweighting(events, reweighting_map_njet, mask):
     print("1D reweighting map based on the number of jets:")
     print(reweighting_map_njet)
     return w_nj
+
+def get_ttlf_reweighting(events, cfg, mask=None):
+    '''Function to compute the ttlf reweighting based on the number of jets and the HT of the event.
+    Only the tt+LF events are reweighted, the other events are left unchanged.'''
+    njet = ak.num(events.JetGood)
+    jetsHt = events.events.ht
+    year = events.metadata.year
+    mask_ttlf = events.ttlf == 1
+    w = np.ones(len(events))
+    if mask is None:
+        mask = np.ones(len(events), dtype=bool)
+    # Apply a different correction based on the year of the tt+LF sample
+    for _year in cfg.keys():
+        cset = correctionlib.CorrectionSet.from_file(
+            cfg[_year]["file"]
+        )
+        corr = cset[cfg[_year]["key"]]
+        w = np.where(year == _year, corr.evaluate(ak.to_numpy(njet), ak.to_numpy(jetsHt)), w)
+    return ak.where(mask & mask_ttlf, w, 1.0)
 
 def get_input_features(events, mask=None, only=None):
     input_features = {
