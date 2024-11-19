@@ -122,12 +122,17 @@ if __name__ == "__main__":
     events_test = ak.with_field(events_test, weight_ttbb[mask_test], "dctr_weight")
 
     # Select events in control region, without cut on tthbb
-    mask_data = (events.data == 1)
     mask_mc = (events.data == 0)
     mask_ttbb = mask_mc & (events.ttbb == 1)
     mask_ttcc = mask_mc & (events.ttcc == 1)
     mask_ttlf = mask_mc & (events.ttlf == 1)
-    mask_data_minus_minor_bkg = mask_data | (mask_mc & ~mask_ttbb)
+    mask_data_minus_minor_bkg = (events.dctr == 1)
+    masks_njet = {
+        "4j": ak.num(events.JetGood) == 4,
+        "5j": ak.num(events.JetGood) == 5,
+        "6j": ak.num(events.JetGood) == 6,
+        ">=7j": ak.num(events.JetGood) >= 7,
+    }
 
     os.makedirs(plot_dir, exist_ok=True)
 
@@ -153,6 +158,11 @@ if __name__ == "__main__":
         "symmetric": weight_cuts_symmetric,
         "quantile0p33": weight_cuts_quantile0p33,
     }
+    for nj, mask_njet in masks_njet.items():
+        w_lo, w_hi = get_central_interval(weight_ttbb[mask_ttbb & mask_njet], perc=perc)
+        weight_dict[f"{nj}_symmetric"] = [(0, w_lo), (w_lo, w_hi), (w_hi, 3)]
+        w_lo, w_hi = np.quantile(weight_ttbb[mask_ttbb & mask_njet].to_numpy(), [1./3, 2./3])
+        weight_dict[f"{nj}_quantile0p33"] = [(0, w_lo), (w_lo, w_hi), (w_hi, 3)]
     d = {"weight_cuts": weight_dict, "central_percentile": perc}
     weight_cuts_by_njet = get_quantiles_by_njet(events, mask_ttbb, q=[1./3, 2./3])
     filename_inclusive = os.path.join(plot_dir, "closure_test", "weight_cuts.json")
@@ -167,18 +177,31 @@ if __name__ == "__main__":
                 continue
             elif len(_events) == 0:
                 continue
+            has_prefix = False
+            prefix = weight_name.split("_")[0]
+            if prefix in list(masks_njet.keys()):
+                has_prefix = True
+                mask_dataset = mask_dataset & masks_njet[weight_name.split("_")[0]]
+            _mask_mc = mask_mc & mask_dataset
+            _mask_ttbb = mask_ttbb & mask_dataset
+            _mask_ttcc = mask_ttcc & mask_dataset
+            _mask_ttlf = mask_ttlf & mask_dataset
+            _mask_data_minus_minor_bkg = mask_data_minus_minor_bkg & mask_dataset
+
             plot_dir_dataset = os.path.join(plot_dir, "closure_test", dataset_type)
             plot_dir_dataset_inclusive = os.path.join(plot_dir_dataset, "inclusive")
             plot_dir_dataset_split_by_weight = os.path.join(plot_dir_dataset, "split_by_weight")
+            if has_prefix:
+                plot_dir_dataset_inclusive = plot_dir_dataset_inclusive.replace("inclusive", f"inclusive_{prefix}")
             for subdir in [plot_dir_dataset, plot_dir_dataset_inclusive, plot_dir_dataset_split_by_weight]:
                 os.makedirs(subdir, exist_ok=True)
             def f(varname_x):
-                return plot_closure_test(_events, mask_data_minus_minor_bkg[mask_dataset], mask_ttbb[mask_dataset], plot_dir_dataset_inclusive, only_var=varname_x)
+                return plot_closure_test(_events, _mask_data_minus_minor_bkg, _mask_ttbb, plot_dir_dataset_inclusive, only_var=varname_x)
             def g(varname_x):
-                return plot_closure_test_split_by_weight(_events, mask_data_minus_minor_bkg[mask_dataset], mask_ttbb[mask_dataset], weight_cuts, plot_dir_dataset_split_by_weight, only_var=varname_x, suffix=weight_name)
+                return plot_closure_test_split_by_weight(_events, _mask_data_minus_minor_bkg, _mask_ttbb, weight_cuts, plot_dir_dataset_split_by_weight, only_var=varname_x, suffix=weight_name)
             if args.workers == 1:
-                plot_closure_test(_events, mask_data_minus_minor_bkg[mask_dataset], mask_ttbb[mask_dataset], plot_dir_dataset_inclusive)
-                plot_closure_test_split_by_weight(_events, mask_data_minus_minor_bkg[mask_dataset], mask_ttbb[mask_dataset], weight_cuts, plot_dir_dataset_split_by_weight, suffix=weight_name)
+                plot_closure_test(_events, _mask_data_minus_minor_bkg, _mask_ttbb, plot_dir_dataset_inclusive)
+                plot_closure_test_split_by_weight(_events, _mask_data_minus_minor_bkg, _mask_ttbb, weight_cuts, plot_dir_dataset_split_by_weight, suffix=weight_name)
             else:
                 with Pool(processes=args.workers) as pool:
                     pool.map(f, list(input_features.keys()))
