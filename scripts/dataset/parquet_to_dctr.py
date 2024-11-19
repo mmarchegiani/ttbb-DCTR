@@ -56,6 +56,7 @@ if __name__ == "__main__":
         # Apply the tt+LF reweighting if specified in the configuration file and update the weights before saving the output
         if cfg_weights.get("ttlf_reweighting", None) is not None:
             cfg_ttlf_reweighting = cfg_weights["ttlf_reweighting"]
-            dataset.apply_weight(dataset.df, get_ttlf_reweighting(dataset.df, cfg_ttlf_reweighting))
+            mask_ttlf = dataset.df.ttlf == 1
+            dataset.apply_weight(dataset.df, get_ttlf_reweighting(dataset.df, cfg_ttlf_reweighting, mask=mask_ttlf))
         if not args.dry:
             dataset.save_all(args.output)
