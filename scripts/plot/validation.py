@@ -200,8 +200,11 @@ if __name__ == "__main__":
             def g(varname_x):
                 return plot_closure_test_split_by_weight(_events, _mask_data_minus_minor_bkg, _mask_ttbb, weight_cuts, plot_dir_dataset_split_by_weight, only_var=varname_x, suffix=weight_name)
             if args.workers == 1:
-                plot_closure_test(_events, _mask_data_minus_minor_bkg, _mask_ttbb, plot_dir_dataset_inclusive)
-                plot_closure_test_split_by_weight(_events, _mask_data_minus_minor_bkg, _mask_ttbb, weight_cuts, plot_dir_dataset_split_by_weight, suffix=weight_name)
+                try:
+                    plot_closure_test(_events, _mask_data_minus_minor_bkg, _mask_ttbb, plot_dir_dataset_inclusive)
+                    plot_closure_test_split_by_weight(_events, _mask_data_minus_minor_bkg, _mask_ttbb, weight_cuts, plot_dir_dataset_split_by_weight, suffix=weight_name)
+                except:
+                    breakpoint()
             else:
                 with Pool(processes=args.workers) as pool:
                     pool.map(f, list(input_features.keys()))
