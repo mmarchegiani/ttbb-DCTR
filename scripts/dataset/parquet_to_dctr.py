@@ -42,7 +42,8 @@ if __name__ == "__main__":
             cfg_ttlf_reweighting = cfg_weights["ttlf_reweighting"]
             dataset.apply_weight(dataset.df, get_ttlf_reweighting(dataset.df, cfg_ttlf_reweighting))
         dataset.compute_njet_weights()
-        dataset.save_reweighting_map(args.output.replace(".parquet", "_reweighting_map.yaml"))
+        reweighting_map_file = args.output.replace(".parquet", "_reweighting_map.yaml")
+        dataset.save_reweighting_map(reweighting_map_file)
     else:
         # Apply a pre-computed njet based reweighting if specified in the configuration file
         # This is needed to apply the same reweighting as applied to the training dataset, to the test dataset
