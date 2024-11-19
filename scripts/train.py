@@ -46,11 +46,29 @@ if __name__ == "__main__":
     # Instantiate the model
     input_size = X_train.shape[1]
     if args.threshold:
-        model = BinaryClassifierWithThreshold(input_size, **cfg_model, learning_rate=cfg_training["learning_rate"], weight_decay=cfg_training.get("weight_decay", 0), score_threshold=cfg_training.get("score_threshold", 0.02))
+        model = BinaryClassifierWithThreshold(
+            input_size,
+            **cfg_model,
+            learning_rate=cfg_training["learning_rate"],
+            weight_decay=cfg_training.get("weight_decay", 0),
+            score_threshold=cfg_training.get("score_threshold", 0.02)
+        )
     elif args.clamp:
-        model = BinaryClassifierClampLoss(input_size, **cfg_model, learning_rate=cfg_training["learning_rate"], weight_decay=cfg_training.get("weight_decay", 0), score_threshold=cfg_training.get("score_threshold", 0.1))
+        model = BinaryClassifierClampLoss(input_size,
+            **cfg_model,
+            learning_rate=cfg_training["learning_rate"],
+            weight_decay=cfg_training.get("weight_decay", 0),
+            score_threshold=cfg_training.get("score_threshold", 0.1)
+        )
     else:
-        model = BinaryClassifier(input_size, **cfg_model, learning_rate=cfg_training["learning_rate"], weight_decay=cfg_training.get("weight_decay", 0))
+        model = BinaryClassifier(
+            input_size,
+            **cfg_model,
+            learning_rate=cfg_training["learning_rate"],
+            weight_decay=cfg_training.get("weight_decay", 0),
+            scheduler=cfg_training.get("scheduler", None),
+            T_max=cfg_training.get("T_max", None)
+        )
 
     # Move the model to device and set training mode
     device = get_device()
