@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from tthbb_spanet import DCTRDataset
 from ttbb_dctr.models.binary_classifier import BinaryClassifier
 from ttbb_dctr.lib.data_preprocessing import get_device, get_datasets_list, get_tensors, get_input_features
-from ttbb_dctr.lib.plotting import plot_correlation, plot_correlation_matrix, plot_classifier_score, plot_dctr_weight, plot_closure_test, plot_closure_test_split_by_weight, get_central_interval
+from ttbb_dctr.lib.plotting import plot_correlation, plot_correlation_matrix, plot_correlation_matrix_diff, plot_classifier_score, plot_dctr_weight, plot_closure_test, plot_closure_test_split_by_weight, get_central_interval
 
 def get_epoch(s):
     return int(s.split("-")[0].split("=")[-1])
@@ -152,3 +152,8 @@ if __name__ == "__main__":
         df["ttlf"] = events[mask].spanet_output.ttlf
         df["w_dctr"] = weight_ttbb[mask]
         plot_correlation_matrix(df, title, os.path.join(plot_dir, "correlation_matrix"), suffix="spanet_output")
+
+        # Take two dataframes defined by a cut on the tthbb spanet score and plot the difference of the two correlation matrices
+        df1 = df[df.tthbb_transformed < 0.6]
+        df2 = df[(df.tthbb_transformed >= 0.6) & (df.tthbb_transformed < 0.75)]
+        plot_correlation_matrix_diff(df1, df2, title, os.path.join(plot_dir, "correlation_matrix"), suffix="spanet_output")

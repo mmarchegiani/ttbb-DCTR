@@ -110,6 +110,22 @@ def plot_correlation_matrix(df, title, plot_dir, suffix=None):
     plt.savefig(filename, dpi=300)
     plt.close(fig)
 
+def plot_correlation_matrix_diff(df1, df2, title, plot_dir, suffix=None):
+    corr1 = df1.corr()
+    corr2 = df2.corr()
+    corr_diff = corr2 - corr1
+    fig, ax = plt.subplots(1,1, figsize=(16,16))
+    sns.heatmap(corr_diff, annot=False, cmap='coolwarm', square=True, linewidths=0.5, vmin=-1, vmax=1)
+
+    ax.set_title(f"Correlation Matrix Difference (CR2 - CR1) for {title}", fontsize=24)
+
+    filename = os.path.join(plot_dir, f"correlation_matrix_diff_{title.lower()}.png")
+    if suffix is not None:
+        filename = filename.replace(".png", f"_{suffix}.png")
+    print(f"Saving {filename}")
+    plt.savefig(filename, dpi=300)
+    plt.close(fig)
+
 def plot_single_classifier_score(events, mask_data, mask_ttbb, plot_dir, suffix=None):
     nbins=200
 
