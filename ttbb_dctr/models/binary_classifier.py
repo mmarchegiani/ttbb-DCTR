@@ -2,9 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 class BinaryClassifier(pl.LightningModule):
-    def __init__(self, input_size, hidden_size, output_size, num_hidden_layers, learning_rate=1e-3, weight_decay=0):
+    def __init__(self, input_size, hidden_size, output_size, num_hidden_layers, learning_rate=1e-3, weight_decay=0, scheduler=None, T_max=None):
         super(BinaryClassifier, self).__init__()
         self.save_hyperparameters()
         self.criterion = nn.BCEWithLogitsLoss(reduction='none') # Note: with the BCEWithLogitsLoss, a sigmoid is applied to the output of the model
@@ -60,7 +61,19 @@ class BinaryClassifier(pl.LightningModule):
         return y_pred
 
     def configure_optimizers(self):
-        return torch.optim.SGD(self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay)
+        optimizer = torch.optim.SGD(self.parameters(), lr=self.hparams.learning_rate, weight_decay=self.hparams.weight_decay)
+
+        if self.hparams.scheduler is not None:
+            if self.hparams.scheduler == "CosineAnnealingLR":
+                assert self.hparams.T_max is not None, "T_max must be provided for CosineAnnealingLR scheduler. Please set it in the model hyperparameters."
+                scheduler = CosineAnnealingLR(
+                    optimizer,
+                    T_max=self.hparams.T_max
+                )
+            else:
+                raise NotImplementedError(f"Scheduler {self.hparams.scheduler} not implemented")
+
+        return [optimizer], [scheduler]
 
 
 # Wrapper class with sigmoid function applied already in the forward pass
