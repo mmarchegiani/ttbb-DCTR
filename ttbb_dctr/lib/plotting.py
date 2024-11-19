@@ -1,4 +1,5 @@
 import os
+import yaml
 import numpy as np
 import awkward as ak
 import matplotlib
@@ -364,3 +365,44 @@ def plot_closure_test_split_by_weight(events, mask_data, mask_ttbb, weight_cuts,
         print(f"Saving {filename}")
         plt.savefig(filename, dpi=300)
         plt.close(fig)
+
+def plot_reweighting_map(input_file, output_file=None):
+    # Check that file is yaml otherwise raise an error
+    if not input_file.endswith(".yaml"):
+        raise ValueError("Input file should be in yaml format.")
+    print(f"Reading reweighting map from {input_file}")
+    with open(input_file, "r") as f:
+        reweighting_map = yaml.safe_load(f)
+    fig, ax = plt.subplots(1,1, figsize=(8,8))
+
+    for mask_name, reweighting_map_mask in reweighting_map.items():
+        njet = np.array(list(reweighting_map_mask.keys()))
+        reweighting = np.array(list(reweighting_map_mask.values()))
+        label = mask_name
+        if label.endswith("_ttlf0p30"):
+            label = label.replace("_ttlf0p30", ")")
+        # Convert numbers in format 0p30To0p60 to ttHbb \in (0.30, 0.60)
+        # Expected format of the key: tthbb0p10To0p60_ttlf0p30
+        if label.startswith("tthbb"):
+            label = label.replace("tthbb", "ttHbb score $\in$ (")
+            label = label.replace("0p", "0.")
+            label = label.replace("To", ", ")
+
+        ax.plot(njet, reweighting, label=label)
+
+    ax.legend(fontsize=16)
+    ax.set_xlabel("$N_{jet}$")
+    ax.set_ylabel("SF")
+    ax.set_xlim(4, 8)
+    ax.set_ylim(1, 1.75)
+    ax.set_xticks(np.arange(4, 9))
+    # Replace last tick to ">7"
+    ax.set_xticklabels([f"{i}" if i < 8 else ">7" for i in range(4, 9)])
+    if output_file is None:
+        output_file = input_file.replace(".yaml", ".png")
+    print("Saving plot to", output_file)
+    plt.savefig(output_file, dpi=300)
+    ax.set_title("1D reweighting factor", fontsize=18)
+    output_with_title = output_file.replace(".png", "_with_title.png")
+    print(f"Saving plot to {output_with_title}")
+    plt.savefig(output_with_title, dpi=300)
