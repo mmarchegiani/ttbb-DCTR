@@ -1,0 +1,31 @@
+model:
+  hidden_size: 50
+  output_size: 1
+  num_hidden_layers: 1
+
+training:
+  epochs: 3000
+  learning_rate: 0.01
+  weight_decay: 0
+  scheduler: CosineAnnealingLR
+  T_max: 300
+  batch_size: 8092
+  patience: 500
+  training_file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/dctr_sfcalibrated/full_Run2_CR1_tthbb_0p10To0p60/dataset_dctr_sfcalibrated_with_ttlf_reweighting_tthbb0p10To0p60_ttlf0p30_train_2277451.parquet"
+  test_file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/dctr_sfcalibrated/full_Run2_CR1_tthbb_0p10To0p60/dataset_dctr_sfcalibrated_with_ttlf_reweighting_tthbb0p10To0p60_ttlf0p30_test_570262.parquet"
+  input_features:
+    - njet
+    - nbjet
+    - ht
+    - ht_b
+    - ht_light
+    - drbb_min
+    - mbb_closest
+    - bjet_pt_3
+
+jobs:
+  path: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR
+  model: binary_classifier_dctr
+  job_flavour: testmatch
+  ngpu: 1
+  ncpu: 3

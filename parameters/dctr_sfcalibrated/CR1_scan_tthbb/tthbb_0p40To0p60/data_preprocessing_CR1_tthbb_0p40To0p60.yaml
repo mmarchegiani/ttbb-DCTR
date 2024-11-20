@@ -1,0 +1,90 @@
+input:
+  folders:
+    - /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr_sfcalibrated/parquet/2016_PreVFP
+    - /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr_sfcalibrated/parquet/2016_PostVFP
+    - /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr_sfcalibrated/parquet/2017
+    - /eos/user/m/mmarcheg/ttHbb/training_datasets/dctr_sfcalibrated/parquet/2018
+
+  exclude_samples:
+    - ttHTobb_ttToSemiLep
+    - TTbbSemiLeptonic_4f_tt+LF
+    - TTbbSemiLeptonic_4f_tt+C
+    - TTToSemiLeptonic_tt+B
+
+preprocessing:
+  mapping_sample:
+    ttHTobb: tthbb
+    tt+B: ttbb
+    tt+C: ttcc
+    tt+LF: ttlf
+    TTTo2L2Nu: tt2l2nu
+    ST: singletop
+    WJetsToLNu_HT: vjets
+    DYJetsToLL: vjets
+    TTW: ttv
+    TTZ: ttv
+    WW: vv
+    WZ: vv
+    ZZ: vv
+    DATA: data
+
+  mapping_encoding:
+    dctr:
+      ttHTobb: 1
+      tt+B: 0
+      tt+C: 1
+      tt+LF: 1
+      TTTo2L2Nu: 1
+      ST: 1
+      WJetsToLNu_HT: 1
+      DYJetsToLL: 1
+      TTW: 1
+      TTZ: 1
+      WW: 1
+      WZ: 1
+      ZZ: 1
+      DATA: 1
+
+  weights_scale:
+    ttHTobb: -1.0
+    tt+B: 1.0
+    tt+C: -1.0
+    tt+LF: -1.0
+    TTTo2L2Nu: -1.0
+    ST: -1.0
+    WJetsToLNu_HT: -1.0
+    DYJetsToLL: -1.0
+    TTW: -1.0
+    TTZ: -1.0
+    WW: -1.0
+    WZ: -1.0
+    ZZ: -1.0
+    DATA: 1.0
+
+  test_size: 0.2
+  shuffle: true
+  num_workers: 0
+
+  weights:
+    njet_reweighting:
+      file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/dctr_sfcalibrated_inclusive_1d_reweighting/full_Run2_ttlf0p30_with_ttlf_reweighting_scan_tthbb/reweighting_map_1d_with_ttlf_reweighting_scan_tthbb.yaml"
+      key: tthbb0p40To0p60_ttlf0p30
+    ttlf_reweighting:
+      "2016_PreVFP":
+        file: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR/parameters/ttlf_calibration/ttlf_background_correction_2016_PreVFP.json
+        key: ttlf_background_correction
+      "2016_PostVFP":
+        file: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR/parameters/ttlf_calibration/ttlf_background_correction_2016_PostVFP.json
+        key: ttlf_background_correction
+      "2017":
+        file: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR/parameters/ttlf_calibration/ttlf_background_correction_2017.json
+        key: ttlf_background_correction
+      "2018":
+        file: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR/parameters/ttlf_calibration/ttlf_background_correction_2018.json
+        key: ttlf_background_correction
+
+cuts:
+  tthbb0p40To0p60_ttlf0p30:
+    tthbb_transformed_min: 0.4
+    tthbb_transformed_max: 0.6
+    ttlf_max: 0.3
