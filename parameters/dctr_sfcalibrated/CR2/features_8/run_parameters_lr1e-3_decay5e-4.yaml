@@ -10,7 +10,7 @@ training:
   batch_size: 8092
   patience: 500
   training_file: null
-  test_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/dctr_sfcalibrated/full_Run2_26features_CR2_ttlf0p30/dataset_dctr_sfcalibrated_tthbb0p60To0p75_ttlf0p30_full_915398.parquet
+  test_file: /eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/dctr_sfcalibrated/full_Run2_26features_CR2_ttlf0p30_with_ttlf_reweighting_BUGFIX/dataset_dctr_sfcalibrated_with_ttlf_reweighting_tthbb0p60To0p75_ttlf0p30_full_915398.parquet
   input_features:
     - njet
     - nbjet
