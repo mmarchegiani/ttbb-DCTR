@@ -85,5 +85,34 @@ cuts:
     tthbb_transformed_max: 0.6
     ttlf_max: 0.3
 
+  tthbb0p10To0p60_ttlf0p30:
+    tthbb_transformed_min: 0.1
+    tthbb_transformed_max: 0.6
+    ttlf_max: 0.3
+  tthbb0p15To0p60_ttlf0p30:
+    tthbb_transformed_min: 0.15
+    tthbb_transformed_max: 0.6
+    ttlf_max: 0.3
+  tthbb0p20To0p60_ttlf0p30:
+    tthbb_transformed_min: 0.2
+    tthbb_transformed_max: 0.6
+    ttlf_max: 0.3
+  tthbb0p25To0p60_ttlf0p30:
+    tthbb_transformed_min: 0.25
+    tthbb_transformed_max: 0.6
+    ttlf_max: 0.3
+  tthbb0p30To0p60_ttlf0p30:
+    tthbb_transformed_min: 0.3
+    tthbb_transformed_max: 0.6
+    ttlf_max: 0.3
+  tthbb0p35To0p60_ttlf0p30:
+    tthbb_transformed_min: 0.35
+    tthbb_transformed_max: 0.6
+    ttlf_max: 0.3
+  tthbb0p40To0p60_ttlf0p30:
+    tthbb_transformed_min: 0.4
+    tthbb_transformed_max: 0.6
+    ttlf_max: 0.3
+
   ttlf0p30:
     ttlf_max: 0.3
