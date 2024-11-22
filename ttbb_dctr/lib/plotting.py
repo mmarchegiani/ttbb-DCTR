@@ -17,7 +17,19 @@ matplotlib.use("Agg")
 hep.style.use("CMS")
 plt.rcParams["figure.figsize"] = [8,8]
 plt.rcParams["font.size"] = 18
-CMAP_6 = plt.rcParams['axes.prop_cycle'].by_key()['color']
+CMAP_6 = hep.styles.cms.cmap_petroff
+CMAP_10 = [
+    "#3f90da",
+    "#ffa90e",
+    "#bd1f01",
+    "#94a4a2",
+    "#832db6",
+    "#a96b59",
+    "#e76300",
+    "#b9ac70",
+    "#717581",
+    "#92dadd",
+]
 
 bins = {
     "njet" : 6,
@@ -133,7 +145,7 @@ def plot_single_classifier_score(events, mask_data, mask_ttbb, plot_dir, suffix=
     score = events.dctr_score
     fig, ax = plt.subplots(1,1,figsize=[8,8])
     ax.hist(score[mask_ttbb], weights=events.event.weight[mask_ttbb], histtype="step", bins=nbins, range=(0,1), label="ttbb")
-    ax.hist(score[mask_data], weights=events.event.weight[mask_data], histtype="step", bins=nbins, range=(0,1), label="Data - minor bkg")
+    ax.hist(score[mask_data], weights=events.event.weight[mask_data], histtype="step", bins=nbins, range=(0,1), label="Data - other bkg")
     ax.set_xlabel("Classifier score")
     ax.legend()
     filename = os.path.join(plot_dir, "score_classifier.png")
@@ -235,8 +247,9 @@ def get_bin_centers(bins):
     bin_centers = bins[:-1] + 0.5*binwidth
     return bin_centers
 
-def plot_closure_test(events, mask_data, mask_ttbb, plot_dir, only_var=None, density=False):
+def plot_closure_test(events, mask_data, mask_ttbb, plot_dir, only_var=None, density=False, remove_signal=False):
     input_features = get_input_features(events)
+    mask_data_no_tthbb = mask_data & (events.tthbb == 0)
     weight_ttbb = events.dctr_weight
     weights = events.event.weight
     assert type(input_features) == dict, "Input features should be a dictionary."
@@ -245,7 +258,9 @@ def plot_closure_test(events, mask_data, mask_ttbb, plot_dir, only_var=None, den
         fig, (ax, rax) = plt.subplots(2,1,figsize=[8,8], gridspec_kw={"height_ratios" : [3,1]}, sharex=True)
         x = np.array(x)
         w = np.array(weights)
-        h = ax.hist(x[mask_data], weights=w[mask_data], bins=bins[varname], range=ranges[varname], histtype="step", label="data - minor bkg", color="black", linewidth=3, density=density)
+        h = ax.hist(x[mask_data], weights=w[mask_data], bins=bins[varname], range=ranges[varname], histtype="step", label="Data - other bkg", color="black", linewidth=3, density=density)
+        if remove_signal:
+            h_no_tthbb = ax.hist(x[mask_data_no_tthbb], weights=w[mask_data_no_tthbb], bins=bins[varname], range=ranges[varname], histtype="step", label="Data - other bkg (w/o ttH(bb))", color="gray", linewidth=3, density=density)
         sumw2 = np.histogram(x[mask_data], bins=bins[varname], range=ranges[varname], weights=w[mask_data]**2)[0]
         yerr = np.sqrt(sumw2)
         # Plot the statistical uncertainty on top of the histogram with errorbars
@@ -273,7 +288,7 @@ def plot_closure_test(events, mask_data, mask_ttbb, plot_dir, only_var=None, den
         rax.errorbar(bin_centers, h_ttbb_rwg_1d[0] / h[0], xerr=0.5*binwidth, yerr=0, fmt='none', color=CMAP_6[1], linewidth=2)
         rax.errorbar(bin_centers, h_ttbb_rwg_dctr[0] / h[0], xerr=0.5*binwidth, yerr=0, fmt='none', color=CMAP_6[2], linewidth=2)
 
-        # Plot errorband in ratio plot for data - minor bkg, centered in 1 with a width of 1 sigma with respect to the statistical uncertainty
+        # Plot errorband in ratio plot for Data - other bkg, centered in 1 with a width of 1 sigma with respect to the statistical uncertainty
         unc_down = 1 - yerr / h[0]
         unc_up = 1 + yerr / h[0]
         unc_band = np.array([unc_down, unc_up])
@@ -285,7 +300,7 @@ def plot_closure_test(events, mask_data, mask_ttbb, plot_dir, only_var=None, den
         ax.set_ylabel("Counts")
 
         rax.set_xlabel(varname)
-        rax.set_ylabel("ttbb / (Data - minor bkg)", fontsize=10)
+        rax.set_ylabel("ttbb / (Data - other bkg)", fontsize=10)
         rax.set_ylim(0,2)
         ax.legend()
         #rax.legend()
@@ -295,9 +310,10 @@ def plot_closure_test(events, mask_data, mask_ttbb, plot_dir, only_var=None, den
         plt.close(fig)
 
 
-def plot_closure_test_split_by_weight(events, mask_data, mask_ttbb, weight_cuts, plot_dir, only_var=None, density=False, suffix=None):
+def plot_closure_test_split_by_weight(events, mask_data, mask_ttbb, weight_cuts, plot_dir, only_var=None, density=False, suffix=None, remove_signal=False):
     # Assert that weight_cuts is an iterable
     input_features = get_input_features(events)
+    mask_data_no_tthbb = mask_data & (events.tthbb == 0)
     weight_ttbb = events.dctr_weight
     weights = events.event.weight
     assert hasattr(weight_cuts, "__iter__"), "weight_cuts should be an iterable."
@@ -315,7 +331,9 @@ def plot_closure_test_split_by_weight(events, mask_data, mask_ttbb, weight_cuts,
             rax = axes[ncuts+j]
             x = np.array(x)
             w = np.array(weights)
-            h = ax.hist(x[mask_data & mask_weight], weights=w[mask_data & mask_weight], bins=bins[varname], range=ranges[varname], histtype="step", label="data - minor bkg", color="black", linewidth=3, density=density)
+            h = ax.hist(x[mask_data & mask_weight], weights=w[mask_data & mask_weight], bins=bins[varname], range=ranges[varname], histtype="step", label="data - other bkg", color="black", linewidth=3, density=density)
+            if remove_signal:
+                h_no_tthbb = ax.hist(x[mask_data_no_tthbb & mask_weight], weights=w[mask_data_no_tthbb & mask_weight], bins=bins[varname], range=ranges[varname], histtype="step", label="Data - other bkg (w/o ttH(bb))", color="gray", linewidth=3, density=density)
             sumw2 = np.histogram(x[mask_data & mask_weight], bins=bins[varname], range=ranges[varname], weights=w[mask_data & mask_weight]**2)[0]
             yerr = np.sqrt(sumw2)
             # Plot the statistical uncertainty on top of the histogram with errorbars
@@ -340,7 +358,7 @@ def plot_closure_test_split_by_weight(events, mask_data, mask_ttbb, weight_cuts,
             #rax.stairs(h_ttbb_rwg_dctr[0] / h[0], h[1], color=CMAP_6[2], linewidth=2)
             rax.errorbar(bin_centers, h_ttbb_rwg_1d[0] / h[0], xerr=0.5*binwidth, yerr=0, fmt='none', color=CMAP_6[1], linewidth=2)
             rax.errorbar(bin_centers, h_ttbb_rwg_dctr[0] / h[0], xerr=0.5*binwidth, yerr=0, fmt='none', color=CMAP_6[2], linewidth=2)
-            # Plot errorband in ratio plot for data - minor bkg, centered in 1 with a width of 1 sigma with respect to the statistical uncertainty
+            # Plot errorband in ratio plot for Data - other bkg, centered in 1 with a width of 1 sigma with respect to the statistical uncertainty
             unc_down = 1 - yerr / h[0]
             unc_up = 1 + yerr / h[0]
             unc_band = np.array([unc_down, unc_up])
@@ -352,7 +370,7 @@ def plot_closure_test_split_by_weight(events, mask_data, mask_ttbb, weight_cuts,
             ax.set_title(f"$\omega\in$[{round(weight_lo, 2)},{round(weight_hi, 2)})")
             ax.set_ylabel("Counts")
             rax.set_xlabel(varname)
-            rax.set_ylabel("ttbb / (Data - minor bkg)", fontsize=10)
+            rax.set_ylabel("ttbb / (Data - other bkg)", fontsize=10)
             rax.set_ylim(0,2)
             ax.legend()
             #rax.legend()
@@ -406,3 +424,32 @@ def plot_reweighting_map(input_file, output_file=None):
     output_with_title = output_file.replace(".png", "_with_title.png")
     print(f"Saving plot to {output_with_title}")
     plt.savefig(output_with_title, dpi=300)
+
+def plot_shapes(events, plot_dir, only_var=None, density=False):
+    input_features = get_input_features(events)
+    for varname, x in input_features.items():
+        if only_var is not None and varname != only_var: continue
+        fig, ax = plt.subplots(1,1,figsize=[8,8])
+        histograms = []
+        for i, sample in enumerate(["tthbb", "ttbb", "ttcc", "ttlf", "tt2l2nu", "singletop", "vjets"]):#, "ttv", "vv", "data"]):
+            mask_sample = getattr(events, sample) == 1
+            x = np.array(x)
+            w = np.array(events.event.weight)
+            if sample not in ["data", "ttbb"]:
+                w = -w
+            h = ax.hist(x[mask_sample], weights=w[mask_sample], bins=bins[varname], range=ranges[varname], histtype="step", color=CMAP_10[i], label=sample, linewidth=3, density=density)
+            histograms.append(h)
+        ax.set_xlim(*ranges[varname])
+        ax.set_ylim(0, 1.4*max([max(h[0]) for h in histograms]))
+        ax.set_xlabel(varname)
+        if density:
+            ax.set_ylabel("A.U.")
+        else:
+            ax.set_ylabel("Counts")
+        ax.legend()
+        filename = os.path.join(plot_dir, f"{varname}_shapes.png")
+        if density:
+            filename = filename.replace("shapes.png", "normalized_shapes.png")
+        print(f"Saving {filename}")
+        plt.savefig(filename, dpi=300)
+        plt.close(fig)
