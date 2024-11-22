@@ -48,6 +48,7 @@ if __name__ == "__main__":
     parser.add_argument('log_directory', type=str, help="Pytorch Lightning Log directory containing the checkpoint and hparams.yaml file.")
     parser.add_argument('--cfg', type=str, default=None, help="Config file with parameters for data preprocessing and training. If passed as argument, it overrides the configuration stored in the Pytorch log directory.", required=False)
     parser.add_argument('--plot_dir', type=str, default="plots", help="Output folder for plots", required=False)
+    parser.add_argument('--remove-signal', action='store_true', default=False, help="Remove signal events from the `other backgrounds` category", required=False)
     parser.add_argument('--epoch', type=int, default=None, help="Select the epoch to load the model from", required=False)
     parser.add_argument('-j', '--workers', type=int, default=8, help="Number of workers for parallel processing")
     args = parser.parse_args()
@@ -173,10 +174,8 @@ if __name__ == "__main__":
             json.dump(_dict, f)
     for weight_name, weight_cuts in weight_dict.items():
         for dataset_type, mask_dataset, _events in zip(["train", "test"], [mask_train, mask_test], [events_train, events_test]):
-            if _events is None:
-                continue
-            elif len(_events) == 0:
-                continue
+            if _events is None: continue
+            elif len(_events) == 0: continue
             has_prefix = False
             prefix = weight_name.split("_")[0]
             if prefix in list(masks_njet.keys()):
@@ -196,15 +195,12 @@ if __name__ == "__main__":
             for subdir in [plot_dir_dataset, plot_dir_dataset_inclusive, plot_dir_dataset_split_by_weight]:
                 os.makedirs(subdir, exist_ok=True)
             def f(varname_x):
-                return plot_closure_test(_events, _mask_data_minus_minor_bkg, _mask_ttbb, plot_dir_dataset_inclusive, only_var=varname_x)
+                return plot_closure_test(events, _mask_data_minus_minor_bkg, _mask_ttbb, plot_dir_dataset_inclusive, only_var=varname_x, remove_signal=args.remove_signal)
             def g(varname_x):
-                return plot_closure_test_split_by_weight(_events, _mask_data_minus_minor_bkg, _mask_ttbb, weight_cuts, plot_dir_dataset_split_by_weight, only_var=varname_x, suffix=weight_name)
+                return plot_closure_test_split_by_weight(events, _mask_data_minus_minor_bkg, _mask_ttbb, weight_cuts, plot_dir_dataset_split_by_weight, only_var=varname_x, suffix=weight_name, remove_signal=args.remove_signal)
             if args.workers == 1:
-                try:
-                    plot_closure_test(_events, _mask_data_minus_minor_bkg, _mask_ttbb, plot_dir_dataset_inclusive)
-                    plot_closure_test_split_by_weight(_events, _mask_data_minus_minor_bkg, _mask_ttbb, weight_cuts, plot_dir_dataset_split_by_weight, suffix=weight_name)
-                except:
-                    breakpoint()
+                plot_closure_test(events, _mask_data_minus_minor_bkg, _mask_ttbb, plot_dir_dataset_inclusive, remove_signal=args.remove_signal)
+                plot_closure_test_split_by_weight(events, _mask_data_minus_minor_bkg, _mask_ttbb, weight_cuts, plot_dir_dataset_split_by_weight, suffix=weight_name, remove_signal=args.remove_signal)
             else:
                 with Pool(processes=args.workers) as pool:
                     pool.map(f, list(input_features.keys()))
