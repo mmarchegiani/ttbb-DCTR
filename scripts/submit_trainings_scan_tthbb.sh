@@ -12,6 +12,6 @@ do
         features_26 \
         features_8
     do
-        python scripts/submit_to_condor.py --cfg $PARAMETERS_DIR/$TTHBB_DIR/$FEATURES_DIR/run_parameters_${TTHBB_DIR}.yaml --log_dir $LOG_DIR/$TTHBB_DIR/$FEATURES_DIR/binary_classifier_full_Run2_batch8092_lr1e-2_cosine_annealing --good-gpus
+        python scripts/submit_to_condor.py --cfg $PARAMETERS_DIR/$TTHBB_DIR/$FEATURES_DIR/run_parameters_${TTHBB_DIR}.yaml --log_dir $LOG_DIR/$TTHBB_DIR/$FEATURES_DIR/binary_classifier_full_Run2_batch8092_lr5e-3_cosine_annealing --good-gpus
     done
 done
