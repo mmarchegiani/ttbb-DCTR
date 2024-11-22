@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, ExponentialLR
 
 class BinaryClassifier(pl.LightningModule):
-    def __init__(self, input_size, hidden_size, output_size, num_hidden_layers, learning_rate=1e-3, weight_decay=0, scheduler=None, T_max=None):
+    def __init__(self, input_size, hidden_size, output_size, num_hidden_layers, learning_rate=1e-3, weight_decay=0, scheduler=None, T_max=None, gamma=None):
         super(BinaryClassifier, self).__init__()
         self.save_hyperparameters()
         self.criterion = nn.BCEWithLogitsLoss(reduction='none') # Note: with the BCEWithLogitsLoss, a sigmoid is applied to the output of the model
@@ -70,10 +70,18 @@ class BinaryClassifier(pl.LightningModule):
                     optimizer,
                     T_max=self.hparams.T_max
                 )
+            elif self.hparams.scheduler == "ExponentialLR":
+                assert self.hparams.gamma is not None, "gamma must be provided for ExponentialLR scheduler. Please set it in the model hyperparameters."
+                scheduler = ExponentialLR(
+                    optimizer,
+                    gamma=self.hparams.gamma
+                )
             else:
                 raise NotImplementedError(f"Scheduler {self.hparams.scheduler} not implemented")
 
-        return [optimizer], [scheduler]
+            return [optimizer], [scheduler]
+        else:
+            return optimizer
 
 
 # Wrapper class with sigmoid function applied already in the forward pass
