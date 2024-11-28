@@ -1,4 +1,5 @@
 import os
+import pickle
 import argparse
 import numpy as np
 import awkward as ak
@@ -10,7 +11,7 @@ from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
-from ttbb_dctr.lib.data_preprocessing import get_tensors, get_dataloader, get_input_features
+from ttbb_dctr.lib.data_preprocessing import get_tensors, get_dataloader, get_input_features, fit_standard_scaler, save_standard_scaler
 from ttbb_dctr.models.binary_classifier import BinaryClassifier
 from ttbb_dctr.models.binary_classifier_with_threshold import BinaryClassifierWithThreshold
 from ttbb_dctr.models.binary_classifier_clamp_loss import BinaryClassifierClampLoss
@@ -25,6 +26,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--cfg', type=str, help="Config file with parameters for data preprocessing and training", required=True)
     parser.add_argument('-l', '--log_dir', type=str, help="Output folder", required=True)
+    parser.add_argument('--no-scheduler', action='store_true', help="Do not use a learning rate scheduler")
     parser.add_argument('--threshold', action='store_true', help="Apply threshold to the DCTR output in the loss function")
     parser.add_argument('--clamp', action='store_true', help="Apply clamp to the DCTR output in the loss function")
     parser.add_argument('--dry', action='store_true', help="Dry run, do not train the model")
@@ -39,8 +41,13 @@ if __name__ == "__main__":
     events_test = ak.from_parquet(cfg_training["test_file"])
     input_features_train = get_input_features(events_train, only=cfg_training.get("input_features", None))
     input_features_test = get_input_features(events_test, only=cfg_training.get("input_features", None))
-    X_train, Y_train, W_train = get_tensors(input_features_train, events_train.dctr, events_train.event.weight, normalize_inputs=True, normalize_weights=True)
-    X_test, Y_test, W_test = get_tensors(input_features_test, events_test.dctr, events_test.event.weight, normalize_inputs=True, normalize_weights=True)
+    # Fit standard scaler on training data and apply it to both training and test data. Save the standard scaler to the log directory in the subfolder `standard_scaler`
+    standard_scaler = fit_standard_scaler(input_features_train)
+    nevents_train = len(events_train)
+    filename = os.path.join(args.log_dir, "standard_scaler", f"standard_scaler_train_{nevents_train}.pkl")
+    save_standard_scaler(standard_scaler, filename)
+    X_train, Y_train, W_train = get_tensors(input_features_train, events_train.dctr, events_train.event.weight, standard_scaler=standard_scaler, normalize_weights=True)
+    X_test, Y_test, W_test = get_tensors(input_features_test, events_test.dctr, events_test.event.weight, standard_scaler=standard_scaler, normalize_weights=True)
     train_dataloader = get_dataloader(X_train, Y_train, W_train, batch_size=cfg_training["batch_size"], shuffle=True)
     val_dataloader = get_dataloader(X_test, Y_test, W_test, batch_size=cfg_training["batch_size"], shuffle=False) # Do not shuffle validation dataset
     # Instantiate the model
@@ -61,13 +68,18 @@ if __name__ == "__main__":
             score_threshold=cfg_training.get("score_threshold", 0.1)
         )
     else:
+        if args.no_scheduler:
+            cfg_training["scheduler"] = None
+            cfg_training["T_max"] = None
+            cfg_training["gamma"] = None
         model = BinaryClassifier(
             input_size,
             **cfg_model,
             learning_rate=cfg_training["learning_rate"],
             weight_decay=cfg_training.get("weight_decay", 0),
             scheduler=cfg_training.get("scheduler", None),
-            T_max=cfg_training.get("T_max", None)
+            T_max=cfg_training.get("T_max", None),
+            gamma=cfg_training.get("gamma", None)
         )
 
     # Move the model to device and set training mode

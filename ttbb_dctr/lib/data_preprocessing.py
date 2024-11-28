@@ -1,4 +1,5 @@
 import os
+import pickle
 import numpy as np
 import awkward as ak
 import torch
@@ -113,26 +114,64 @@ def get_input_features(events, mask=None, only=None):
 
     return input_features
 
-def _stack_arrays(input_features: list, dtype=np.float32, normalize=True):
-    assert len(input_features) > 1
-    np_arrays = [np.asarray(ak.unflatten(x, 1), dtype=dtype) for x in input_features]
-    X_np = np.hstack(np_arrays)
-    if normalize:
-        scaler = StandardScaler()
-        scaler.fit(X_np)
-        X_np = scaler.transform(X_np)
-    return torch.from_numpy(X_np)
-
-def get_tensors(input_features, labels, weights, dtype=np.float32, normalize_inputs=True, normalize_weights=True):
-    device = get_device()
-
+def fit_standard_scaler(input_features, dtype=np.float32):
+    '''Fit standard scaler on the input features. The input features are expected to be a dictionary of awkward arrays.
+    The function returns the fitted StandardScaler object that can be saved and used to transform the input features.
+    '''
     if type(input_features) is dict:
         input_features = list(input_features.values())
     elif type(input_features) is list:
         pass
     else:
         raise ValueError("input_features must be either a dictionary or a list")
-    X = _stack_arrays(input_features, dtype=dtype, normalize=normalize_inputs)
+    assert len(input_features) > 1
+    np_arrays = [np.asarray(ak.unflatten(x, 1), dtype=dtype) for x in input_features]
+    X_np = np.hstack(np_arrays)
+    standard_scaler = StandardScaler()
+    standard_scaler.fit(X_np)
+
+    return standard_scaler
+
+def save_standard_scaler(scaler, filename):
+    if os.path.exists(filename):
+        filename = filename.replace(".pkl", "_v0.pkl")
+        i = 0
+        while os.path.exists(filename):
+            i += 1
+            filename = filename.replace(f"_v{i-1}.pkl", f"_v{i}.pkl")
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    with open(filename, "wb") as f:
+        print(f"Saving standard scaler to {filename}")
+        pickle.dump(scaler, f)
+
+def _stack_arrays(input_features, dtype=np.float32, standard_scaler=None):
+    '''Stack the input features into a single torch tensor. The input features are expected to be either a list or a dictionary of awkward arrays.
+    The `standard_scaler` argument is an optional StandardScaler object that can be used to transform the input features.
+    If `standard_scaler` is None, the input features are not transformed.
+    '''
+    if type(input_features) is dict:
+        input_features = list(input_features.values())
+    elif type(input_features) is list:
+        pass
+    else:
+        raise ValueError("input_features must be either a dictionary or a list")
+    assert len(input_features) > 1
+    np_arrays = [np.asarray(ak.unflatten(x, 1), dtype=dtype) for x in input_features]
+    X_np = np.hstack(np_arrays)
+    if standard_scaler is not None:
+        X_np = standard_scaler.transform(X_np)
+    return torch.from_numpy(X_np)
+
+def get_tensors(input_features, labels, weights, dtype=np.float32, standard_scaler=None, normalize_weights=True):
+    '''Convert the input features, labels and weights to torch tensors. The input features are expected to be a dictionary of awkward arrays.
+    The function returns the input features, labels and weights as torch tensors. The input features are stacked into a single tensor.
+    The `standard_scaler` argument is an optional StandardScaler object that can be used to transform the input features.
+    If `standard_scaler` is None, the input features are not transformed.
+    If `normalize_weights` is True, the weights are normalized to have a mean of 1.
+    '''
+    device = get_device()
+
+    X = _stack_arrays(input_features, dtype=dtype, standard_scaler=standard_scaler)
     Y = torch.tensor(labels, dtype=torch.long)
     W = torch.Tensor(weights)
 
