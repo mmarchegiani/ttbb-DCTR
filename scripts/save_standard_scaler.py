@@ -14,6 +14,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--cfg', type=str, help="Config file with parameters for data preprocessing and training", required=True)
     parser.add_argument('-l', '--log_dir', type=str, help="Output folder", required=True)
+    parser.add_argument('--label', type=str, default=None, help="Label for the output file", required=False)
     args = parser.parse_args()
 
     cfg = OmegaConf.load(args.cfg)
@@ -29,4 +30,6 @@ if __name__ == "__main__":
     standard_scaler = fit_standard_scaler(input_features_train)
     nevents_train = len(events_train)
     filename = os.path.join(args.log_dir, "standard_scaler", f"standard_scaler_train_{nevents_train}.pkl")
+    if args.label is not None:
+        filename = filename.replace("standard_scaler", f"standard_scaler_{args.label}")
     save_standard_scaler(standard_scaler, filename)
