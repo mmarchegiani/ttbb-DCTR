@@ -8,6 +8,7 @@ do
             features_26 \
             features_8
 	do
-		python scripts/plot/validation.py $MODELS_DIR/$TTHBB_CUT/$FEATURES_DIR/binary_classifier_full_Run2_batch8092_lr${LR}/lightning_logs/version_0 --cfg $PARAMS_DIR/$FEATURES_DIR/run_parameters_lr2e-3_decay1e-4.yaml --plot_dir plots_CR2 -j 10 --remove-signal
+		python scripts/plot/validation.py $MODELS_DIR/$TTHBB_CUT/$FEATURES_DIR/binary_classifier_full_Run2_batch8092_lr${LR}/lightning_logs/version_0 --cfg $PARAMS_DIR/$FEATURES_DIR/run_parameters_lr2e-3_decay1e-4.yaml --plot_dir plots_CR2 -j 10
+		python scripts/plot/validation.py $MODELS_DIR/$TTHBB_CUT/$FEATURES_DIR/binary_classifier_full_Run2_batch8092_lr${LR}/lightning_logs/version_0 --cfg $PARAMS_DIR/$FEATURES_DIR/run_parameters_lr2e-3_decay1e-4.yaml --plot_dir plots_CR2_remove_signal -j 10 --remove-signal
 	done
 done
