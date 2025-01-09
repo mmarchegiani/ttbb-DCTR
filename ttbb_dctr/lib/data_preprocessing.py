@@ -32,32 +32,6 @@ def get_cr_mask(events, params):
     )
     return mask
 
-def get_njet_reweighting_map(events, mask_num, mask_den):
-    reweighting_map_njet = {}
-    njet = ak.num(events.JetGood)
-    w = events.event.weight
-    for nj in range(4,7):
-        mask_nj = (njet == nj)
-        reweighting_map_njet[nj] = sum(w[mask_num & mask_nj]) / sum(w[mask_den & mask_nj])
-    for nj in range(7,21):
-        reweighting_map_njet[nj] = sum(w[mask_num & (njet >= 7)]) / sum(w[mask_den & (njet >= 7)])
-    return reweighting_map_njet
-
-def get_njet_reweighting(events, reweighting_map_njet, mask=None):
-    njet = ak.num(events.JetGood)
-    w = events.event.weight
-    w_nj = np.ones(len(events))
-    if mask is None:
-        mask = np.ones(len(events), dtype=bool)
-    for nj in range(4,7):
-        mask_nj = (njet == nj)
-        w_nj = np.where(mask & mask_nj, reweighting_map_njet[nj], w_nj)
-    for nj in range(7,21):
-        w_nj = np.where(mask & (njet >= 7), reweighting_map_njet[nj], w_nj)
-    print("1D reweighting map based on the number of jets:")
-    print(reweighting_map_njet)
-    return w_nj
-
 def get_ttlf_reweighting(events, cfg, mask=None):
     '''Function to compute the ttlf reweighting based on the number of jets and the HT of the event.
     Only the tt+LF events are reweighted, the other events are left unchanged.'''
