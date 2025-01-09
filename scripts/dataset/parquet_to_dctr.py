@@ -1,16 +1,10 @@
-import os
 import yaml
-import multiprocessing
-from multiprocessing import Pool
-from functools import partial
 import argparse
-import numpy as np
-import pandas as pd
-import awkward as ak
 from omegaconf import OmegaConf
 
 from tthbb_spanet import DCTRDataset
-from ttbb_dctr.lib.data_preprocessing import get_datasets_list, get_cr_mask, get_njet_reweighting, get_ttlf_reweighting
+from tthbb_spanet.lib.dataset.dctr_dataset import get_njet_reweighting
+from ttbb_dctr.lib.data_preprocessing import get_datasets_list, get_cr_mask, get_ttlf_reweighting
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -39,8 +33,9 @@ if __name__ == "__main__":
             raise ValueError("njet reweighting already computed and saved in the configuration file. Please remove the --compute-njet-reweighting flag.")
         # Apply the tt+LF reweighting before computing the njet reweighting
         if cfg_weights.get("ttlf_reweighting", None) is not None:
-            cfg_ttlf_reweighting = cfg_weights["ttlf_reweighting"]
-            dataset.apply_weight(dataset.df, get_ttlf_reweighting(dataset.df, cfg_ttlf_reweighting))
+            raise DeprecationWarning("tt+LF reweighting is deprecated. The reweighting of the tt+LF sample should be applied in the inputs.")
+            #cfg_ttlf_reweighting = cfg_weights["ttlf_reweighting"]
+            #dataset.apply_weight(dataset.df, get_ttlf_reweighting(dataset.df, cfg_ttlf_reweighting))
         dataset.compute_njet_weights()
         reweighting_map_file = args.output.replace(".parquet", "_reweighting_map.yaml")
         dataset.save_reweighting_map(reweighting_map_file)
@@ -56,6 +51,7 @@ if __name__ == "__main__":
             dataset.apply_weight(dataset.df, get_njet_reweighting(dataset.df, njet_reweighting_map, mask=mask_ttbb))
         # Apply the tt+LF reweighting if specified in the configuration file and update the weights before saving the output
         if cfg_weights.get("ttlf_reweighting", None) is not None:
+            raise DeprecationWarning("tt+LF reweighting is deprecated. The reweighting of the tt+LF sample should be applied in the inputs.")
             cfg_ttlf_reweighting = cfg_weights["ttlf_reweighting"]
             mask_ttlf = dataset.df.ttlf == 1
             dataset.apply_weight(dataset.df, get_ttlf_reweighting(dataset.df, cfg_ttlf_reweighting, mask=mask_ttlf))
