@@ -1,0 +1,23 @@
+model:
+  hidden_size: 50
+  output_size: 1
+  num_hidden_layers: 1
+
+training:
+  epochs: 3000
+  learning_rate: 0.005
+  weight_decay: 0
+  scheduler: CosineAnnealingLR
+  T_max: 300
+  gamma: 0.99
+  batch_size: 8092
+  patience: 100
+  training_file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/spanet_v2/tthbb_0p30To0p75_ttlf0p30/dataset_dctr_tthbb_0p30To0p75_ttlf0p30_tthbb0p30To0p75_ttlf0p30_train_2366372.parquet"
+  test_file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/spanet_v2/tthbb_0p30To0p75_ttlf0p30/dataset_dctr_tthbb_0p30To0p75_ttlf0p30_tthbb0p30To0p75_ttlf0p30_test_591147.parquet"
+
+jobs:
+  path: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR
+  model: binary_classifier_dctr
+  job_flavour: testmatch
+  ngpu: 1
+  ncpu: 3
