@@ -1,0 +1,81 @@
+input:
+  folders:
+    - /eos/user/m/mmarcheg/ttHbb/training_datasets/spanet_v2/parquet/spanet_inference_transformed/2016_PreVFP
+    - /eos/user/m/mmarcheg/ttHbb/training_datasets/spanet_v2/parquet/spanet_inference_transformed/2016_PostVFP
+    - /eos/user/m/mmarcheg/ttHbb/training_datasets/spanet_v2/parquet/spanet_inference_transformed/2017
+    - /eos/user/m/mmarcheg/ttHbb/training_datasets/spanet_v2/parquet/spanet_inference_transformed/2018
+
+  exclude_samples:
+    - ttHTobb_ttToSemiLep
+    - TTbbSemiLeptonic_4f_tt+LF
+    - TTbbSemiLeptonic_4f_tt+C
+    - TTToSemiLeptonic_tt+B
+
+preprocessing:
+  mapping_sample:
+    ttHTobb: tthbb
+    tt+B: ttbb
+    tt+C: ttcc
+    tt+LF: ttlf
+    TTTo2L2Nu: tt2l2nu
+    ST: singletop
+    WJetsToLNu_HT: vjets
+    DYJetsToLL: vjets
+    TTW: ttv
+    TTZ: ttv
+    WW: vv
+    WZ: vv
+    ZZ: vv
+    DATA: data
+
+  mapping_encoding:
+    dctr:
+      ttHTobb: 1
+      tt+B: 0
+      tt+C: 1
+      tt+LF: 1
+      TTTo2L2Nu: 1
+      ST: 1
+      WJetsToLNu_HT: 1
+      DYJetsToLL: 1
+      TTW: 1
+      TTZ: 1
+      WW: 1
+      WZ: 1
+      ZZ: 1
+      DATA: 1
+
+  weights_scale:
+    ttHTobb: -1.0
+    tt+B: 1.0
+    tt+C: -1.0
+    tt+LF: -1.0
+    TTTo2L2Nu: -1.0
+    ST: -1.0
+    WJetsToLNu_HT: -1.0
+    DYJetsToLL: -1.0
+    TTW: -1.0
+    TTZ: -1.0
+    WW: -1.0
+    WZ: -1.0
+    ZZ: -1.0
+    DATA: 1.0
+
+  test_size: 0.2
+  shuffle: true
+  num_workers: 0
+
+  weights:
+    njet_reweighting:
+      file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/spanet_v2/njet_reweighting/reweighting_map_1d_ttlf0p30.yaml"
+      key: tthbb0p30To1p00_ttlf0p30
+
+cuts:
+  tthbb0p60To0p75_ttlf0p30:
+    tthbb_transformed_min: 0.6
+    tthbb_transformed_max: 0.75
+    ttlf_max: 0.3
+  tthbb0p60To0p80_ttlf0p30:
+    tthbb_transformed_min: 0.6
+    tthbb_transformed_max: 0.8
+    ttlf_max: 0.3
