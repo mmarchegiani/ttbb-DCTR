@@ -12,8 +12,8 @@ training:
   gamma: 0.99
   batch_size: 8092
   patience: 100
-  training_file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/spanet_v2/tthbb_0p40To0p75_ttlf0p30/dataset_dctr_tthbb_0p40To0p75_ttlf0p30_tthbb0p40To0p75_ttlf0p30_train_1841832.parquet"
-  test_file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/spanet_v2/tthbb_0p40To0p75_ttlf0p30/dataset_dctr_tthbb_0p40To0p75_ttlf0p30_tthbb0p40To0p75_ttlf0p30_test_458685.parquet"
+  training_file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/spanet_v2/tthbb_0p40To0p75_ttlf0p30/dataset_dctr_tthbb_0p40To0p75_ttlf0p30_tthbb0p40To0p75_ttlf0p30_train_1837027.parquet"
+  test_file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/spanet_v2/tthbb_0p40To0p75_ttlf0p30/dataset_dctr_tthbb_0p40To0p75_ttlf0p30_tthbb0p40To0p75_ttlf0p30_test_459827.parquet"
   input_features:
     - njet
     - nbjet

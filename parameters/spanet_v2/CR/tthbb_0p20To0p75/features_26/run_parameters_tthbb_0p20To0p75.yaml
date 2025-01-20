@@ -12,8 +12,8 @@ training:
   gamma: 0.99
   batch_size: 8092
   patience: 100
-  training_file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/spanet_v2/tthbb_0p20To0p75_ttlf0p30/dataset_dctr_tthbb_0p20To0p75_ttlf0p30_tthbb0p20To0p75_ttlf0p30_train_2853950.parquet"
-  test_file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/spanet_v2/tthbb_0p20To0p75_ttlf0p30/dataset_dctr_tthbb_0p20To0p75_ttlf0p30_tthbb0p20To0p75_ttlf0p30_test_712421.parquet"
+  training_file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/spanet_v2/tthbb_0p20To0p75_ttlf0p30/dataset_dctr_tthbb_0p20To0p75_ttlf0p30_tthbb0p20To0p75_ttlf0p30_train_2847886.parquet"
+  test_file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/spanet_v2/tthbb_0p20To0p75_ttlf0p30/dataset_dctr_tthbb_0p20To0p75_ttlf0p30_tthbb0p20To0p75_ttlf0p30_test_711890.parquet"
 
 jobs:
   path: /afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR
