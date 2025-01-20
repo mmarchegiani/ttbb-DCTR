@@ -67,7 +67,7 @@ preprocessing:
 
   weights:
     njet_reweighting:
-      file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/spanet_v2/njet_reweighting/reweighting_map_1d_ttlf0p30.yaml"
+      file: "/eos/user/m/mmarcheg/ttHbb/dctr/training_datasets/spanet_v2/njet_reweighting/reweighting_map_1d.yaml"
       key: tthbb0p40To1p00_ttlf0p30
 
 cuts:
