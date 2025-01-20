@@ -1,11 +1,11 @@
-LOG_DIR=/eos/user/m/mmarcheg/ttHbb/dctr/training/spanet_v2
+LOG_DIR=/eos/user/m/mmarcheg/ttHbb/dctr/training/spanet_v2_bugfix
 PARAMETERS_DIR=/afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR/parameters/spanet_v2/CR1
 
 for TTHBB_DIR in \
+    tthbb_0p40To0p60 \
     tthbb_0p10To0p60 \
     tthbb_0p20To0p60 \
-    tthbb_0p30To0p60 \
-    tthbb_0p40To0p60
+    tthbb_0p30To0p60
 do
     for FEATURES_DIR in \
         features_26 \
@@ -18,10 +18,10 @@ done
 PARAMETERS_DIR=/afs/cern.ch/work/m/mmarcheg/ttHbb/ttbb-DCTR/parameters/spanet_v2/CR
 
 for TTHBB_DIR in \
+    tthbb_0p40To0p75 \
     tthbb_0p10To0p75 \
     tthbb_0p20To0p75 \
-    tthbb_0p30To0p75 \
-    tthbb_0p40To0p75
+    tthbb_0p30To0p75
 do
     for FEATURES_DIR in \
         features_26 \
