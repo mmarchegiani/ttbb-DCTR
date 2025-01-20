@@ -16,7 +16,7 @@ import torch.nn.functional as F
 
 from tthbb_spanet import DCTRDataset
 from ttbb_dctr.models.binary_classifier import BinaryClassifier
-from ttbb_dctr.lib.data_preprocessing import get_device, get_datasets_list, get_tensors, get_input_features
+from ttbb_dctr.lib.data_preprocessing import get_device, get_datasets_list, get_tensors, get_input_features, load_standard_scaler
 from ttbb_dctr.lib.plotting import plot_correlation, plot_correlation_matrix, plot_classifier_score, plot_dctr_weight, plot_closure_test, plot_closure_test_split_by_weight, get_central_interval, get_quantiles_by_njet
 
 def get_epoch(s):
@@ -68,16 +68,19 @@ if __name__ == "__main__":
 
     # Load model and compute predictions to extract the DCTR weight
     assert cfg_training.get("training_file", None) is not None or cfg_training.get("test_file", None) is not None, "No training or test file provided"
+    standard_scaler_dir = os.path.join(args.log_directory, "../..", "standard_scaler")
+    assert len(os.listdir(standard_scaler_dir)) > 0, f"Found {len(os.listdir(standard_scaler_dir))} files in {os.path.abspath(standard_scaler_dir)}"
+    standard_scaler = load_standard_scaler(standard_scaler_dir)
     if cfg_training.get("training_file", None) is not None:
         dataset_train = DCTRDataset(cfg_training["training_file"], shuffle=False, reweigh=False, label=False)
         events_train = dataset_train.df
         input_features_train = get_input_features(events_train, only=cfg_training.get("input_features", None))
-        X_train, Y_train, W_train = get_tensors(input_features_train, events_train.dctr, events_train.event.weight, normalize_inputs=True, normalize_weights=True)
+        X_train, Y_train, W_train = get_tensors(input_features_train, events_train.dctr, events_train.event.weight, standard_scaler=standard_scaler, normalize_weights=True)
     if cfg_training.get("test_file", None) is not None:
         dataset_test = DCTRDataset(cfg_training["test_file"], shuffle=False, reweigh=False, label=False)
         events_test = dataset_test.df
         input_features_test = get_input_features(events_test, only=cfg_training.get("input_features", None))
-        X_test, Y_test, W_test = get_tensors(input_features_test, events_test.dctr, events_test.event.weight, normalize_inputs=True, normalize_weights=True)
+        X_test, Y_test, W_test = get_tensors(input_features_test, events_test.dctr, events_test.event.weight, standard_scaler=standard_scaler, normalize_weights=True)
     if cfg_training.get("training_file", None) is not None and cfg_training.get("test_file", None) is not None:
         events = ak.concatenate((events_train, events_test))
     if cfg_training.get("training_file", None) is None:

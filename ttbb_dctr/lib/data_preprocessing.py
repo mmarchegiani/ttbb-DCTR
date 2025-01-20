@@ -118,6 +118,14 @@ def save_standard_scaler(scaler, filename):
         print(f"Saving standard scaler to {filename}")
         pickle.dump(scaler, f)
 
+def load_standard_scaler(folder):
+    # Take the first file in the folder as standard scaler:
+    filename = os.path.join(folder, os.listdir(folder)[0])
+    with open(filename, "rb") as f:
+        print(f"Loading standard scaler from {filename}")
+        scaler = pickle.load(f)
+    return scaler
+
 def _stack_arrays(input_features, dtype=np.float32, standard_scaler=None):
     '''Stack the input features into a single torch tensor. The input features are expected to be either a list or a dictionary of awkward arrays.
     The `standard_scaler` argument is an optional StandardScaler object that can be used to transform the input features.
