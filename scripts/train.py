@@ -16,7 +16,6 @@ from ttbb_dctr.models.binary_classifier import BinaryClassifier
 from ttbb_dctr.models.binary_classifier_with_threshold import BinaryClassifierWithThreshold
 from ttbb_dctr.models.binary_classifier_clamp_loss import BinaryClassifierClampLoss
 from ttbb_dctr.utils.utils import get_device
-from tthbb_spanet import DCTRDataset
 
 def save_config(cfg, filename):
     with open(filename, "w") as f:
