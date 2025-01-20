@@ -17,4 +17,4 @@ pip install -e .
 cd -
 
 # Launch training
-python $TTBB_DCTR_DIR/scripts/train.py --cfg $1 --log_dir $2
+python $TTBB_DCTR_DIR/scripts/train.py --cfg $1 --log_dir $2 --no-scheduler
