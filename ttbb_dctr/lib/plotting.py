@@ -162,8 +162,9 @@ def plot_classifier_score(events, mask_data, mask_ttbb, mask_train, plot_dir):
         plot_single_classifier_score(events[mask], mask_data[mask], mask_ttbb[mask], plot_dir, suffix=label.lower())
 
 def plot_single_dctr_weight(events, mask, ax, plot_dir, stack, suffix=None):
-    nbins = 50
-    axis_w = hist.axis.Regular(nbins, 0, 2.5, flow=False, name="w")
+    nbins = 60
+    range_weight = (0.7, 1.3)
+    axis_w = hist.axis.Regular(nbins, range_weight[0], range_weight[1], flow=False, name="w")
     axis_cat = hist.axis.StrCategory(["njet=4", "njet=5", "njet=6", "njet>=7"], name="njet")
     full_hist = Hist(axis_w, axis_cat)
 
@@ -184,7 +185,7 @@ def plot_single_dctr_weight(events, mask, ax, plot_dir, stack, suffix=None):
         full_hist.fill(w=weight_ttbb[mask & mask_nj], weight=events.event.weight[mask & mask_nj], njet=njet_label)
         s = full_hist.stack("njet")
     w = np.array(events.event.weight[mask])
-    ax.hist(weight_ttbb[mask], weights=w, histtype="step", label="ttbb", bins=nbins, range=(0,2.5), linewidth=2, color="black")
+    ax.hist(weight_ttbb[mask], weights=w, histtype="step", label="ttbb", bins=nbins, range=range_weight, linewidth=2, color="black")
 
     if stack:
         s.plot(stack=stack, histtype="fill", ax=ax)
@@ -192,6 +193,7 @@ def plot_single_dctr_weight(events, mask, ax, plot_dir, stack, suffix=None):
         s.plot(stack=stack, histtype="step", ax=ax)
     ax.set_xlabel("Weight $\omega = p(Data - bkg) / p(ttbb)$")
     ax.set_ylabel("Counts")
+    ax.set_xlim(*range_weight)
     ax.legend()
     filename = os.path.join(plot_dir, "weight_ttbb.png")
     if suffix is not None:
