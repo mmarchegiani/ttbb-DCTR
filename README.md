@@ -25,6 +25,15 @@ pip install -e .
 ### Configuration file
 See [data_preprocessing_CR1_scan_tthbb_compute_njet_reweighting.yaml](https://github.com/mmarchegiani/ttbb-DCTR/blob/main/parameters/spanet_v2/CR1/data_preprocessing_CR1_scan_tthbb_compute_njet_reweighting.yaml) for an example configuration file.
 
+### Parameters for SPANet inference
+It is possible to specify a model of SPANet in order to do the inference and extract the classification scores. Set the following parameters in the YAML:
+```
+preprocessing:
+  spanet:
+      model: /path/to/spanet_model.onnx
+      event_file: /path/to/event_file.yaml
+```
+
 ### Compute njet reweighting
 Before running the dataset production, it is necessary to compute the 1D reweighting based on the njet distribution. This is done with the following command:
 ```
